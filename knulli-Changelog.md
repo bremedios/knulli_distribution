@@ -3,6 +3,7 @@
 ## ChangeLog
 
 ### ADDED ###
+- es setting for drastic image scaling. Bilinear(smooth) and nearest-neighbor(sharp).
 - es settings for retroarch emulators to customize hotkeys
 - battery saver mode. In batocera.conf valid modes for batterysavermode=dim|suspend|shutdown. batterysavertimer=(number in seconds >=60)
 - automatically switching between bezels/overlays for 4:3(internal lcd) and 16:9 displays(hdmi)

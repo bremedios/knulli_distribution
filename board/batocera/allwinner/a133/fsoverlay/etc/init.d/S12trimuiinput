@@ -1,0 +1,20 @@
+#!/bin/sh
+
+RESOLUTION=$(batocera-resolution currentResolution)
+
+case $1 in
+    start)
+	if [ "$RESOLUTION" == "1280x720" ]; then 
+		trimui_inputd_smart_pro &
+	else
+		trimui_inputd_brick &
+	fi
+	;;
+     stop)
+	killall -9 trimui_inputd_smart_pro
+	killall -9 trimui_inputd_brick
+	;;
+esac
+
+exit 0
+

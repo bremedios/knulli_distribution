@@ -16,6 +16,10 @@ class ShGenerator(Generator):
         else:
             shrom = rom
 
+        # Fixes stuff on PortMaster
+        dbfile = "/tmp/gamecontrollerdb.txt"
+        controllersConfig.writeSDLGameDBAllControllers(playersControllers, dbfile)
+
         commandArray = ["/bin/bash", shrom]
         return Command.Command(array=commandArray,env={
             "SDL_GAMECONTROLLERCONFIG": controllersConfig.generateSdlGameControllerConfig(playersControllers)
