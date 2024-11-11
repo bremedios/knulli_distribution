@@ -1,6 +1,6 @@
 #!/bin/sh
 
-mydir=/userdata/system/configs/drastic_steward
+mydir=$(dirname "$0")
 
 
 export LD_LIBRARY_PATH=$mydir/libs:$LD_LIBRARY_PATH
