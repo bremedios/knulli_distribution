@@ -541,7 +541,7 @@ def runCommand(command):
 
     command.array.insert(0, "nice")
     command.array.insert(1, "-n")
-    command.array.insert(2, "-11")
+    command.array.insert(2, "-4")
 
     # compute environment : first the current envs, then override by values set at generator level
     envvars = dict(os.environ)

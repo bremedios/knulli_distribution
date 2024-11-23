@@ -852,6 +852,11 @@ def createLibretroConfig(generator, system, controllers, metadata, guns, wheels,
     else:
         retroarchConfig['video_scale_integer'] = 'false'
 
+    if system.isOptSet('integeroverscale') and system.getOptBoolean('integeroverscale') == True:
+        retroarchConfig['video_scale_integer_overscale'] = 'true'
+    else:
+        retroarchConfig['video_scale_integer_overscale'] = 'false'
+
     # Netplay management
     if 'netplay.mode' in system.config and system.config['netplay.mode'] in systemNetplayModes:
         # Security : hardcore mode disables save states, which would kill netplay

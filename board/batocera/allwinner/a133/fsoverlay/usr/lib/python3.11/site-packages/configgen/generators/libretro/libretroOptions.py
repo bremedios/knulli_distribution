@@ -2122,7 +2122,7 @@ def generateCoreSettings(coreSettings, system, rom, guns, wheels):
         if system.isOptSet('reicast_mipmapping'):
             coreSettings.save('reicast_mipmapping', '"' + system.config['reicast_mipmapping'] + '"')
         else:
-            coreSettings.save('reicast_mipmapping', '"disabled"')
+            coreSettings.save('reicast_mipmapping', '"enabled"')
         # Anisotropic Filtering
         if system.isOptSet('reicast_anisotropic_filtering'):
             coreSettings.save('reicast_anisotropic_filtering', '"' + system.config['reicast_anisotropic_filtering'] + '"')
