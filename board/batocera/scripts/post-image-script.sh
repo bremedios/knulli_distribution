@@ -41,7 +41,9 @@ fi
 mkdir -p "${BATOCERA_BINARIES_DIR}/images" || exit 1
 
 ##### build images #############
-SUFFIXVERSION=$(cat "${TARGET_DIR}/usr/share/batocera/batocera.version" | sed -e s+'^\([0-9\.]*\).*$'+'\1'+) # xx.yy version
+#SUFFIXVERSION=$(cat "${TARGET_DIR}/usr/share/batocera/batocera.version" | sed -e s+'^\([0-9\.]*\).*$'+'\1'+) # xx.yy version
+SUFFIXVERSION=$(awk '{if ($1 ~ /^[0-9\.]+$/) print $1; else print $1}' "${TARGET_DIR}/usr/share/batocera/batocera.version") # Handle numeric and codename strings versions
+
 SUFFIXDATE=$(date +%Y%m%d)
 
 #### build the images ###########

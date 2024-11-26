@@ -543,6 +543,7 @@ config BR2_TARGET_BATOCERA_IMAGES_DEFINITIONS
 	default "x86_64"										if BR2_PACKAGE_BATOCERA_TARGET_X86_64
 	default "x86-64-v3"										    if BR2_PACKAGE_BATOCERA_TARGET_ZEN3
 	default "qualcomm/sd845/odin"									if BR2_PACKAGE_BATOCERA_TARGET_ODIN
+        default "qualcomm/sm8250/rp5"			                                                if BR2_PACKAGE_BATOCERA_TARGET_SM8250
 	default "riscv/visionfive2"									if BR2_PACKAGE_BATOCERA_TARGET_RISCV
 	default "amlogic/s922x/ogu amlogic/s922x/gtkingpro amlogic/s922x/gtking amlogic/s922x/odroidn2l amlogic/s922x/vim3 amlogic/s922x/odroidn2 amlogic/s922x/odroidn2plus amlogic/s922x/zero2" \
 													if BR2_PACKAGE_BATOCERA_TARGET_S922X
@@ -1158,7 +1159,7 @@ config BR2_PACKAGE_BATOCERA_PORTS_SYSTEMS
 	select BR2_PACKAGE_OPENJAZZ		# ALL
 
 	# Jazz Jackrabbit 2
-	select BR2_PACKAGE_JAZZ2_NATIVE    if !BR2_PACKAGE_BATOCERA_TARGET_RISCV
+	select BR2_PACKAGE_JAZZ2_NATIVE    if !BR2_PACKAGE_BATOCERA_TARGET_RISCV && !BR2_PACKAGE_BATOCERA_TARGET_H700 && !BR2_PACKAGE_BATOCERA_TARGET_A133
 
 	help
 	  Ports
