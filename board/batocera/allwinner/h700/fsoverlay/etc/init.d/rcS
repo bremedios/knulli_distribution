@@ -38,7 +38,7 @@ for i in /etc/init.d/S??* ; do
             ;;
         *)
             case "$i" in
-                *S02resize | *S05udev | *S06audio | *S11share | *S12populateshare) # Don't run these in background
+                *S01dbus | *S02resize | *S03modules | *S04populate | *S05udev | *S06audio | *S06modprobe | *S11share | *S12populateshare) # Don't run these in background
                     $i start
                     ;;
                 *)

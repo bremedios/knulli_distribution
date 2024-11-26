@@ -16,7 +16,7 @@ index 49f312f..256dbb7 100644
 +option(RPI5 "Optimize for RPi5" OFF)
 +option(ODROIDXU4 "Optimize for ODROIDXU4" OFF)
 +option(S922X "Optimize for S922X" OFF)
-
+ 
  if(IOS AND NOT LIBRETRO)
  	set(USE_VULKAN OFF CACHE BOOL "Force vulkan off" FORCE)
 @@ -150,6 +156,22 @@ elseif(LIBRETRO)
@@ -42,5 +42,6 @@ index 49f312f..256dbb7 100644
  	if(APPLE)
  		find_library(FOUNDATION Foundation)
  		target_link_libraries(${PROJECT_NAME} PRIVATE ${FOUNDATION})
---
+-- 
 2.44.0
+
