@@ -4,12 +4,12 @@
             "trigger": "joystick2",
             "type": "mouse"
         },
-		{
+        {
             "trigger": "pagedown",
             "type": "key",
             "target": "BTN_LEFT"
         },
-		{
+        {
             "trigger": "r3",
             "type": "key",
             "target": "BTN_LEFT"

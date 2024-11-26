@@ -975,8 +975,8 @@ diff -urN a/src/video/mali-fbdev/SDL_malivideo.c b/src/video/mali-fbdev/SDL_mali
 +    window->w = displaydata->native_display.width;
 +    window->h = displaydata->native_display.height;
 +#else
-+    window->w = 1280;
-+    window->h = 720;
++    window->w = 1024;
++    window->h = 768;
 +#endif
 +
 +    /* OpenGL ES is the law here */

@@ -3,11 +3,11 @@
 # dolphin-emu
 #
 ################################################################################
-# Version: Commits on Aug 4, 2024
+# Version: Commits on Oct 27, 2024
 # Add major & minor version accordingly for any bump
-DOLPHIN_EMU_VERSION = 7645cbff9a263b9b77e14e0ea1ab46be34239469
-DOLPHIN_EMU_VERSION_MAJOR = 2407
-DOLPHIN_EMU_VERSION_MINOR = 130
+DOLPHIN_EMU_VERSION = d4e32ec6916d6c252cb1541dca1b5e83d4afd9c1
+DOLPHIN_EMU_VERSION_MAJOR = 2409
+DOLPHIN_EMU_VERSION_MINOR = 233
 DOLPHIN_EMU_SITE = https://github.com/dolphin-emu/dolphin
 DOLPHIN_EMU_SITE_METHOD = git
 DOLPHIN_EMU_LICENSE = GPLv2+
@@ -33,8 +33,10 @@ DOLPHIN_EMU_CONF_OPTS += -DUSE_RETRO_ACHIEVEMENTS=ON
 ifeq ($(BR2_PACKAGE_QT6),y)
 DOLPHIN_EMU_DEPENDENCIES += qt6base qt6svg
 DOLPHIN_EMU_CONF_OPTS += -DENABLE_QT=ON
+DOLPHIN_EMU_CONF_OPTS += -DENABLE_NOGUI=OFF
 else
 DOLPHIN_EMU_CONF_OPTS += -DENABLE_QT=OFF
+DOLPHIN_EMU_CONF_OPTS += -DENABLE_NOGUI=ON
 endif
 
 DOLPHIN_EMU_MAKE_ENV += LDFLAGS="-Wl,--copy-dt-needed-entries"
