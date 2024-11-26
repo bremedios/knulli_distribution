@@ -26,6 +26,24 @@ ln -sf "/userdata/cheats" "${TARGET_DIR}/usr/share/batocera/datainit/cheats/cust
 # we don't want the kodi startup script
 rm -f "${TARGET_DIR}/etc/init.d/S50kodi" || exit 1
 
+# we don't want the irqbalance startup script
+rm -f "${TARGET_DIR}/etc/init.d/S13irqbalance" || exit 1
+
+# we don't want the virtualevents startup script
+rm -f "${TARGET_DIR}/etc/init.d/S15virtualevents" || exit 1
+
+# we don't want the lircd startup script
+rm -f "${TARGET_DIR}/etc/init.d/S25lircd" || exit 1
+
+# we don't want the rpcbind startup script
+rm -f "${TARGET_DIR}/etc/init.d/S30rpcbind" || exit 1
+
+# we don't want the iptables startup script
+rm -f "${TARGET_DIR}/etc/init.d/S35iptables" || exit 1
+
+# we don't want the hotkeygen startup script
+rm -f "${TARGET_DIR}/etc/init.d/S90hotkeygen" || exit 1
+
 # we have custom urandom scripts
 rm -f "${TARGET_DIR}/etc/init.d/S20urandom" || exit 1
 
@@ -67,11 +85,11 @@ then
 fi
 if test -e "${TARGET_DIR}/etc/init.d/S45connman"
 then
-    if test -e "${TARGET_DIR}/etc/init.d/S08connman"
+    if test -e "${TARGET_DIR}/etc/init.d/S20connman"
     then
 	rm -f "${TARGET_DIR}/etc/init.d/S45connman" || exit 1
     else
-	mv "${TARGET_DIR}/etc/init.d/S45connman" "${TARGET_DIR}/etc/init.d/S08connman" || exit 1 # move to make before share
+	mv "${TARGET_DIR}/etc/init.d/S45connman" "${TARGET_DIR}/etc/init.d/S20connman" || exit 1 # move to make before share
     fi
 fi
 if test -e "${TARGET_DIR}/etc/init.d/S21rngd"
