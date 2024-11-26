@@ -1,0 +1,26 @@
+#!/bin/bash
+
+BOARD=$(cat /boot/boot/batocera.board)
+# We only want the script to run for these devices
+if [ "$BOARD" != "rg40xx-h" ] && [ "$BOARD" != "rg40xx-v" ] && [ "$BOARD" != "rg-cubexx" ]; then
+    exit 1
+fi
+
+case "$1" in
+  start)
+  # Code in here will only be executed on start.
+    echo -n "Enabling analog stick LEDs"
+    /usr/bin/analog_stick_led_daemon.sh start clear
+    ;;
+  stop)
+    echo -n "Disabling analog stick LEDs"
+    # Code in here will only be executed on shutdown.
+    /usr/bin/analog_stick_led_daemon.sh stop
+    ;;
+  *)
+    # Code in here will be executed in all other conditions.
+    echo "Usage: $0 {start|stop}"
+    ;;
+esac
+ 
+exit $?

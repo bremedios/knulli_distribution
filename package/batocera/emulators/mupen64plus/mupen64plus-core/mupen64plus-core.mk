@@ -3,16 +3,17 @@
 # mupen64plus-core
 #
 ################################################################################
-# Version.: Commits on Jan 25, 2024
-MUPEN64PLUS_CORE_VERSION = 860fac3fbae94194a392c1d9857e185eda6d083e
-MUPEN64PLUS_CORE_SITE = $(call github,mupen64plus,mupen64plus-core,$(MUPEN64PLUS_CORE_VERSION))
+# Version: Commits on Sep 10, 2024
+MUPEN64PLUS_CORE_VERSION = 312a5befde1b44db8beee7868b929c23d896991f
+MUPEN64PLUS_CORE_SITE = \
+    $(call github,mupen64plus,mupen64plus-core,$(MUPEN64PLUS_CORE_VERSION))
 MUPEN64PLUS_CORE_LICENSE = GPLv2
 MUPEN64PLUS_CORE_DEPENDENCIES = sdl2 alsa-lib freetype dejavu
 MUPEN64PLUS_CORE_INSTALL_STAGING = YES
 
 MUPEN64PLUS_GL_CFLAGS = -I$(STAGING_DIR)/usr/include -L$(STAGING_DIR)/usr/lib
 
-ifeq ($(BR2_PACKAGE_LIBGLU)$(BR2_PACKAGE_SDL2_OPENGL),yy)
+ifeq ($(BR2_PACKAGE_LIBGLU)$(BR2_PACKAGE_SDL2_OPENGL)$(BR2_PACKAGE_XSERVER_XORG_SERVER),yyy)
 	MUPEN64PLUS_CORE_DEPENDENCIES += libglu
 	MUPEN64PLUS_GL_LDLIBS = -lGL
 else
@@ -48,7 +49,8 @@ endif
 
 ifeq ($(BR2_arm)$(BR2_ARM_CPU_HAS_NEON),yy)
 	MUPEN64PLUS_CORE_CPUFLAGS += -marm -DNO_ASM -DARM -D__arm__ -DARM_ASM -D__NEON_OPT -DNOSSE
-	MUPEN64PLUS_GL_CFLAGS += -D__ARM_NEON__ -D__NEON_OPT -ftree-vectorize -mvectorize-with-neon-quad -ftree-vectorizer-verbose=2 -funsafe-math-optimizations -fno-finite-math-only
+	MUPEN64PLUS_GL_CFLAGS += -D__ARM_NEON__ -D__NEON_OPT -ftree-vectorize -mvectorize-with-neon-quad
+	MUPEN64PLUS_GL_CFLAGS += -ftree-vectorizer-verbose=2 -funsafe-math-optimizations -fno-finite-math-only
 
 	ifeq ($(BR2_ARM_CPU_HAS_VFPV4),y)
 		MUPEN64PLUS_CORE_CPUFLAGS += -mfpu=neon-vfpv4

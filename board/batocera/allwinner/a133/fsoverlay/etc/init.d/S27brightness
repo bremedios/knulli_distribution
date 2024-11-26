@@ -30,7 +30,9 @@ case $1 in
 
         # Update saved brightness setting if it's different from the current brightness
         if [ "$SAVED_BRI" != "$CURRENT_BRI" ]; then
-            batocera-settings-set display.brightness "$CURRENT_BRI"
+            if [ -e "/userdata/system/batocera.conf" ]; then
+                batocera-settings-set display.brightness "$CURRENT_BRI"
+            fi
         fi
         ;;
 esac
