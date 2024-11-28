@@ -1,239 +1,264 @@
 #!/bin/bash
 
-BOARD=$(cat /boot/boot/batocera.board)
-# We only want the script to run for these devices
-if [ "$BOARD" != "rg40xx-h" ] && [ "$BOARD" != "rg40xx-v" ] && [ "$BOARD" != "rg-cubexx" ]; then
-    exit 1
-fi
+export LC_NUMERIC="en_US.UTF-8"
 
-# Define the serial device
-SERIAL_DEVICE="/dev/ttyS5"
+# Daemon modes
+DAEMON_MODE_OFF=0
+DAEMON_MODE_STATIC=1
+DAEMON_MODE_BREATHING_FAST=2
+DAEMON_MODE_BREATHING_MEDIUM=3
+DAEMON_MODE_BREATHING_SLOW=4
+DAEMON_MODE_SINGLE_RAINBOW=5
+DAEMON_MODE_MULTI_RAINBOW=6
 
-# Display LED mode descriptions and usage examples if no parameters are provided
-if [ $# -eq 0 ]; then
-  echo "Usage: $0 <led_mode> <brightness_value> [<speed_value>|<r_value> <g_value> <b_value> [<joystick_r> <joystick_g> <joystick_b>]]"
-  echo "LED Modes:"
-  echo "0: LED off"
-  echo "   Usage: $0 0"
-  echo "   Example: $0 0   # LED off"
-  echo "1: Solid Color (no effects)"
-  echo "   Usage: $0 1 <brightness_value> <right_joystick_r> <right_joystick_g> <right_joystick_b> <left_joystick_r> <left_joystick_g> <left_joystick_b>"
-  echo "   Example: $0 1 255 255 0 0 0 0 255   # Right joystick color red, left joystick color blue"
-  echo "   Randomize: $0 1 <brightness_value> randomize"
-  echo "   Example: $0 1 255 randomize  # Randomize RGB values and send to /dev/ttyS5 until stopped"
-  echo "2: Solid Color (Breathing, Fast)"
-  echo "   Usage: $0 2 <brightness_value> <right_joystick_r> <right_joystick_g> <right_joystick_b> <left_joystick_r> <left_joystick_g> <left_joystick_b>"
-  echo "   Example: $0 2 255 0 255 0 0 0 255   # Green color at maximum brightness with fast breathing effect"
-  echo "3: Solid Color (Breathing, Medium)"
-  echo "   Usage: $0 3 <brightness_value> <right_joystick_r> <right_joystick_g> <right_joystick_b> <left_joystick_r> <left_joystick_g> <left_joystick_b>"
-  echo "   Example: $0 3 255 0 0 255 0 0 255   # Blue color at maximum brightness with medium breathing effect"
-  echo "4: Solid Color (Breathing, Slow)"
-  echo "   Usage: $0 4 <brightness_value> <right_joystick_r> <right_joystick_g> <right_joystick_b> <left_joystick_r> <left_joystick_g> <left_joystick_b>"
-  echo "   Example: $0 4 255 255 255 0 255 255 0   # Yellow color at maximum brightness with slow breathing effect"
-  echo "5: Monochromatic Rainbow (Cycle between RGB colors)"
-  echo "   Usage: $0 5 <brightness_value> <speed_value>"
-  echo "   Example: $0 5 255 100   # Monochromatic rainbow effect at maximum brightness with speed 100"
-  echo "6: Multicolor Rainbow (Rainbow Swirl effect)"
-  echo "   Usage: $0 6 <brightness_value> <speed_value>"
-  echo "   Example: $0 6 255 100   # Multicolor rainbow swirl effect at maximum brightness with speed 100"
-  exit 0
-fi
+# Known TrimUI LED modes
+LED_MODE_OFF=0
+LED_MODE_LINEAR=1
+LED_MODE_BREATH=2
+LED_MODE_SNIFF=3
+LED_MODE_STATIC=4
+LED_MODE_BLINK_SINGLE=5
+LED_MODE_BLINK_DOUBLE=6
+LED_MODE_BLINK_TRIPLE=7
 
-# Open the serial device
-exec 20<>$SERIAL_DEVICE
+# TrimUI LEDs have an odd max integer value of 60
+MAX_INTEGER=60
 
-# Configure the serial device
-stty -F $SERIAL_DEVICE 115200 -opost -isig -icanon -echo
+# TrimUI LEDs interpret effect cycles value -1 as infinite loop
+EFFECT_CYCLES_INFINITE_LOOP=-1
 
-# Ensure MCU has power enabled
-echo 1 > /sys/class/power_supply/axp2202-battery/mcu_pwr
-#echo 1 > /sys/class/power_supply/axp2202-battery/mcu_esckey
-sleep 0.05
+# Initialize color (black)
+COLOR="00000"
 
-# Ensure correct number of arguments
-if [ $# -lt 1 ]; then
-  echo "Usage: $0 <led_mode> <brightness_value> [<speed_value>|<r_value> <g_value> <b_value> [<joystick_r> <joystick_g> <joystick_b>]]"
-  exit 1
-fi
+# Initialize mode (off)
+MODE=0
 
-LED_MODE=$1
-BRIGHTNESS=$2
+# Initialize brightness (none)
+BRIGHTNESS=0
 
-echo $LED_MODE 
+# Converts Daemon mode into TrimUI LED mode
+#
+# The analog_stick_led_daemon.sh was written for the
+# Anbernic RG40XXH/V and RGCubeXX, consequently it
+# sets the modes known from those devices.
+# Before a mode can be set, it must be translated
+# from a daemon/Anbernic mode to a TrimUI LED mode.
+setMode() {
+  
+  if [ $1 -eq $DAEMON_MODE_OFF ]; then
+    MODE=$LED_MODE_OFF
+  elif [ $1 -eq $DAEMON_MODE_STATIC ]; then
+    MODE=$LED_MODE_STATIC # TODO: Check if this is the correct mode?
+  elif [ $1 -eq $DAEMON_MODE_BREATHING_FAST ]; then
+    echo "Daemon mode 2 (Breath (fast)) is not supported, yet. Using Breath (medium) instead"
+    MODE=$LED_MODE_BREATH # TODO: Is it possible to modify breath speed?
+  elif [ $1 -eq $DAEMON_MODE_BREATHING_MEDIUM ]; then
+    MODE=$LED_MODE_BREATH # TODO: Is it possible to modify breath speed?
+  elif [ $1 -eq $DAEMON_MODE_BREATHING_SLOW ]; then
+    echo "Daemon mode 2 (Breath (slow)) is not supported, yet. Using Breath (slow) instead"
+    MODE=$LED_MODE_BREATH # TODO: Is it possible to modify breath speed?
+  elif [ $1 -eq $DAEMON_MODE_SINGLE_RAINBOW ]; then
+    # TODO: Figure out a way to manually run rainbow mode
+    MODE=$LED_MODE_LINEAR # TODO: Verify if linear mode is similar to rainbow mode (cycling through colors randomly)
+  elif [ $1 -eq $DAEMON_MODE_MULTI_RAINBOW ]; then
+    # TODO: Figure out a way to manually run multi rainbow mode
+    echo "Daemon mode 6 (Multi Rainbow) is not supported, yet. Using Static instead."
+    MODE=$LED_MODE_STATIC
+  fi
 
-# Ensure brightness is within the valid range (0-255)
-if [ -z $BRIGHTNESS ]; then
-  BRIGHTNESS=0
-elif [ $BRIGHTNESS -lt 0 ] || [ $BRIGHTNESS -gt 255 ]; then
-  echo "Brightness value must be between 0 and 255"
-  exit 1
-fi
-
-# Ensure LED mode is within the valid range (1-6)
-if [ -z $LED_MODE ]; then
-  LED_MODE=0
-elif [ $LED_MODE -lt 0 ] || [ $LED_MODE -gt 6 ]; then
-  echo "LED mode must be between 0 (off) and 6"
-  exit 1
-fi
-
-# Function to calculate checksum
-calculate_checksum() {
-  local sum=0
-  for byte in "$@"; do
-    sum=$((sum + byte))
-  done
-  echo $((sum & 0xFF))
 }
 
-# Function to generate random RGB values
-generate_random_rgb() {
-  echo $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256))
+# Converts brightness (0-255) into an integer of (0-60)
+setBrightness() {
+
+  BRIGHTNESS_DEC=$1
+  
+  # The TSP has an integer range of 0-60
+  # So we need to do some math first:
+  # Divide by 255 and mulitply by 60
+  BRIGHTNESS_TSP_FLOAT=$(echo "scale=2; $BRIGHTNESS_DEC/255*$MAX_INTEGER" | bc)
+
+  # Round it to get applicable brightness
+  BRIGHTNESS="$(printf '%.0f' ${BRIGHTNESS_TSP_FLOAT})"
+
 }
 
-# Function to read key press
-key_pressed() {
-  read -t 0.001 -n 1 && return 0 || return 1
+# Converts integer RGB values into a TSP-compatible hex string
+setHexColor() {
+
+  R_DEC=$1
+  G_DEC=$2
+  B_DEC=$3
+  
+  echo R_DEC $R_DEC
+  echo G_DEC $G_DEC
+  echo B_DEC $B_DEC
+
+  # The TSP has an integer range of 0-60
+  # So we need to do some math first:
+  # Divide by 255 and mulitply by 60
+  R_TSP_FLOAT=$(echo "scale=2; $R_DEC/255*$MAX_INTEGER" | bc)
+  G_TSP_FLOAT=$(echo "scale=2; $G_DEC/255*$MAX_INTEGER" | bc)
+  B_TSP_FLOAT=$(echo "scale=2; $B_DEC/255*$MAX_INTEGER" | bc)
+
+  
+  echo R_TSP_FLOAT $R_TSP_FLOAT
+  echo G_TSP_FLOAT $G_TSP_FLOAT
+  echo B_TSP_FLOAT $B_TSP_FLOAT
+
+  R_TSP="$(printf '%.0f' ${R_TSP_FLOAT})"
+  G_TSP="$(printf '%.0f' ${G_TSP_FLOAT})"
+  B_TSP="$(printf '%.0f' ${B_TSP_FLOAT})"
+
+  echo R_TSP $R_TSP
+  echo G_TSP $G_TSP
+  echo B_TSP $B_TSP
+
+  R_HEX="$(printf '%02x' $R_TSP)"
+  G_HEX="$(printf '%02x' $G_TSP)"
+  B_HEX="$(printf '%02x' $B_TSP)"
+  
+  echo R_HEX $R_HEX
+  echo G_HEX $G_HEX
+  echo B_HEX $B_HEX
+
+  COLOR="$R_HEX$G_HEX$B_HEX"
+  
+  echo TSPColor $COLOR
+
 }
 
-# Construct payload based on LED mode
-if [ $LED_MODE -eq 0 ]; then
+# Disables the LED by simply turning brightness to 0
+disableLed() {
 
-  echo "Turning RGB LEDs off."
-  LED_MODE=1
-  BRIGHTNESS=0
-  R=0
-  G=0
-  B=0
+  echo 0 > /sys/class/led_anim/max_scale
 
-  # Construct the payload for RGB values
-  PAYLOAD=$(printf '\\x%02X\\x%02X' $LED_MODE $BRIGHTNESS)
-  for ((i = 0; i < 16; i++)); do
-    PAYLOAD+=$(printf '\\x%02X\\x%02X\\x%02X' $R $G $B)
-  done
+}
 
-  # Calculate checksum for the payload
-  PAYLOAD_BYTES=($LED_MODE $BRIGHTNESS)
-  for ((i = 0; i < 16; i++)); do
-    PAYLOAD_BYTES+=($R $G $B)
-  done
-  CHECKSUM=$(calculate_checksum "${PAYLOAD_BYTES[@]}")
-  PAYLOAD+=$(printf '\\x%02X' $CHECKSUM)
+# Stops the effect that is currently set
+stopEffect() {
 
-elif [ $LED_MODE -ge 5 ] && [ $LED_MODE -le 6 ]; then
-  # Ensure speed is provided for modes 5 and 6
-  if [ $# -ne 3 ]; then
-    echo "Usage for modes 5 and 6: $0 <led_mode> <brightness_value> <speed_value>"
+  echo 0 > /sys/class/led_anim/effect_enable
+
+}
+
+# Starts the given effect with the given color and brightness
+startEffect() {
+
+  # stop previous effect
+  stopEffect
+
+  # set brightness of next effect
+  echo $BRIGHTNESS > /sys/class/led_anim/max_scale
+
+  # set color of next effect
+  echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_lr
+  echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_m
+  # only the Brick has f1/f2
+  if [ -f "/sys/class/led_anim/effect_rgb_hex_f1" ] && [ -f "/sys/class/led_anim/effect_rgb_hex_f2" ];then # TODO: replace with boardcheck if possible!
+    echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_f1
+    echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_f2
+  fi
+  
+  # set cycles of next effect to infinite loop (-1)
+  echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_lr
+  echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_m
+  # only the Brick has f1/f2
+  if [ -f "/sys/class/led_anim/effect_cycles_f1" ] && [ -f "/sys/class/led_anim/effect_cycles_f2" ];then # TODO: replace with boardcheck if possible!
+    echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_f1
+    echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_f2
+  fi
+
+  #set mode of next effect
+  echo $MODE > /sys/class/led_anim/effect_m
+  echo $MODE > /sys/class/led_anim/effect_lr
+  # only the Brick has f1/f2
+  if [ -f "/sys/class/led_anim/effect_f1" ] && [ -f "/sys/class/led_anim/effect_f2" ];then # TODO: replace with boardcheck if possible!
+    echo "$MODE " > /sys/class/led_anim/effect_f1
+    echo "$MODE " > /sys/class/led_anim/effect_f2
+  fi
+
+  # start next effect
+  echo 1 > /sys/class/led_anim/effect_enable
+
+}
+
+# Prints instructions to stdout.
+printInstructions() {
+  echo "Usage:"
+  echo "       $0 <mode> <brightness> <red> <green> <blue> for modes 1-4"
+  echo "       $0 <mode> <brightness> <speed> for modes 5-6"
+  echo ""
+  echo "Analog stick RGB LED control for TrimUI Smart Pro."
+  echo ""
+  echo "Allowed values"
+  echo "  mode       0-6"
+  echo "             0: off"
+  echo "             1: static"
+  echo "             2: breath (fast)"
+  echo "             3: breath (medium)"
+  echo "             4: breath (slow)"
+  echo "             5: single rainbow (cyling through colors)"
+  echo "             6: multi rainbow (swirl)"
+  echo "  brightness 0-255"
+  echo "  red        0-255"
+  echo "  green      0-255"
+  echo "  blue       0-255"
+  echo ""
+}
+
+
+# Set daemon mode 1-4 (static, breathing (fast, medium, slow))
+# with the given brightness and color.
+setRGBBasedMode() {
+
+  # If mode is not between 1-4 or brightness is not between
+  # 0 and 100 or any RGB color is not between 0 and 255,
+  # print instructions and quit.
+  if [ $1 -gt 4 ] || [ $2 -lt 0 ] || [ $2 -gt 100 ] || [ $3 -lt 0 ] || [ $3 -gt 255 ] || [ $4 -lt 0 ] || [ $4 -gt 255 ] || [ $5 -lt 0 ] || [ $5 -gt 255 ]; then
+    printInstructions
     exit 1
   fi
 
-  SPEED=$3
+  # Set mode
+  setMode $1
 
-  # Ensure speed is within the valid range (0-255)
-  if [ -z $SPEED ]; then
-    SPEED=0
-  elif [ $SPEED -lt 0 ] || [ $SPEED -gt 255 ]; then
-    echo "Speed value must be between 0 and 255"
-    exit 1
+  # Set BRIGHTNESS variable
+  setBrightness $2
+
+  # Set COLOR variable with concatenated hex value of RGB integers
+  setHexColor $3 $4 $5
+
+  # Turn on the given effect/brightness/color
+  startEffect
+
+}
+
+# On the Anbernic RG40XXH/V and RGCube, rainbow modes
+# do not allow setting RGB values because they are irrelevant.
+# However, they allow to set a speed setting.
+setSpeedBasedMode() {
+
+  # TODO: Find a way to mimic $1=5 (single rainbow) and $=6 (multi rainbow)
+  # TODO: Find a way to apply $3 (speed, range 0-100)
+  echo "Speed-based modes (single rainbow, multi rainbow) are not supported, yet."
+
+}
+
+# Disable LED and exit if at least one argument (mode) is given and mode is 0
+if [ $# -gt 0 ] && [ $1 -eq $DAEMON_MODE_OFF ]; then
+  disableLed
+  exit 1
+# Go to a speed-based mode (not yet supported)
+elif [ $# -eq 3 ] && [ $1 -gt 4 ]; then
+  setSpeedBasedMode $1 $2 $3
+# Go to an RGB-based mode
+elif [ $# -gt 4 ] && [ $1 -lt 5 ]; then
+  if [ $# -gt 5 ]; then # TODO: Extend daemon to support dedicated control of each available LED (left, right, center, f1, f2)
+    echo "Dedicated RGB values for the right stick are not supported, yet."
   fi
-
-  # Calculate the checksum
-  CHECKSUM=$(calculate_checksum $LED_MODE $BRIGHTNESS 1 1 $SPEED)
-
-  # Construct the payload
-  PAYLOAD=$(printf '\\x%02X\\x%02X\\x%02X\\x%02X\\x%02X\\x%02X' $LED_MODE $BRIGHTNESS 1 1 $SPEED $CHECKSUM)
-
-elif [ $LED_MODE -eq 1 ] && [ "$3" == "randomize" ]; then
-  # Randomize mode for LED mode 1
-  echo "Press any key to stop..."
-  while true; do
-    read RIGHT_R RIGHT_G RIGHT_B < <(generate_random_rgb)
-    read LEFT_R LEFT_G LEFT_B < <(generate_random_rgb)
-    
-    # Construct the payload for RGB and joystick values
-    PAYLOAD=$(printf '\\x%02X\\x%02X' $LED_MODE $BRIGHTNESS)
-    for ((i = 0; i < 8; i++)); do
-      PAYLOAD+=$(printf '\\x%02X\\x%02X\\x%02X' $RIGHT_R $RIGHT_G $RIGHT_B)
-    done
-    for ((i = 0; i < 8; i++)); do
-      PAYLOAD+=$(printf '\\x%02X\\x%02X\\x%02X' $LEFT_R $LEFT_G $LEFT_B)
-    done
-
-    # Calculate checksum for the payload
-    PAYLOAD_BYTES=($LED_MODE $BRIGHTNESS)
-    for ((i = 0; i < 8; i++)); do
-      PAYLOAD_BYTES+=($RIGHT_R $RIGHT_G $RIGHT_B)
-    done
-    for ((i = 0; i < 8; i++)); do
-      PAYLOAD_BYTES+=($LEFT_R $LEFT_G $LEFT_B)
-    done
-    CHECKSUM=$(calculate_checksum "${PAYLOAD_BYTES[@]}")
-    PAYLOAD+=$(printf '\\x%02X' $CHECKSUM)
-
-    # Write the payload to the serial device
-    echo -e -n "$PAYLOAD" > $SERIAL_DEVICE
-
-    # Check for key press to exit
-    if key_pressed; then
-      echo "Randomize mode stopped."
-      break
-    fi
-  done
+  setRGBBasedMode $1 $2 $3 $4 $5
+# Invalid input
 else
-  # Ensure RGB and joystick values are provided for mode 1
-  if [ $# -ne 8 ]; then
-    echo "Usage for mode 1-4: $0 <led_mode> <brightness_value> <right_joystick_r> <right_joystick_g> <right_joystick_b> <left_joystick_r> <left_joystick_g> <left_joystick_b>"
-    exit 1
-  fi
-
-  RIGHT_R=$3
-  RIGHT_G=$4
-  RIGHT_B=$5
-  LEFT_R=$6
-  LEFT_G=$7
-  LEFT_B=$8
-
-  # Ensure RGB values are within the valid range (0-255)
-  if [ $RIGHT_R -lt 0 ] || [ $RIGHT_R -gt 255 ] || [ $RIGHT_G -lt 0 ] || [ $RIGHT_G -gt 255 ] || [ $RIGHT_B -lt 0 ] || [ $RIGHT_B -gt 255 ]; then
-    echo "RGB values must be between 0 and 255"
-    exit 1
-  fi
-
-  # Ensure joystick RGB values are within the valid range (0-255)
-  if [ $LEFT_R -lt 0 ] || [ $LEFT_R -gt 255 ] || [ $LEFT_G -lt 0 ] || [ $LEFT_G -gt 255 ] || [ $LEFT_B -lt 0 ] || [ $LEFT_B -gt 255 ]; then
-    echo "Joystick RGB values must be between 0 and 255"
-    exit 1
-  fi
-
-  # Construct the payload for RGB and joystick values
-  PAYLOAD=$(printf '\\x%02X\\x%02X' $LED_MODE $BRIGHTNESS)
-  for ((i = 0; i < 8; i++)); do
-    PAYLOAD+=$(printf '\\x%02X\\x%02X\\x%02X' $RIGHT_R $RIGHT_G $RIGHT_B)
-  done
-  for ((i = 0; i < 8; i++)); do
-    PAYLOAD+=$(printf '\\x%02X\\x%02X\\x%02X' $LEFT_R $LEFT_G $LEFT_B)
-  done
-
-  # Calculate checksum for the payload
-  PAYLOAD_BYTES=($LED_MODE $BRIGHTNESS)
-  for ((i = 0; i < 8; i++)); do
-    PAYLOAD_BYTES+=($RIGHT_R $RIGHT_G $RIGHT_B)
-  done
-  for ((i = 0; i < 8; i++)); do
-    PAYLOAD_BYTES+=($LEFT_R $LEFT_G $LEFT_B)
-  done
-  CHECKSUM=$(calculate_checksum "${PAYLOAD_BYTES[@]}")
-  PAYLOAD+=$(printf '\\x%02X' $CHECKSUM)
+  printInstructions
 fi
-
-# Debugging output
-echo "Debug: Payload is $PAYLOAD"
-echo "Debug: Command to be executed: echo -e -n \"$PAYLOAD\" > $SERIAL_DEVICE"
-
-# Write the payload to the serial device
-echo -e -n "$PAYLOAD" > $SERIAL_DEVICE
-
-echo "LED mode $LED_MODE set with brightness $BRIGHTNESS"
-
-# Close the serial device
-exec 20>&-

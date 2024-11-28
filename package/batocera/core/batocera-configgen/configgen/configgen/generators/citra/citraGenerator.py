@@ -1,35 +1,49 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import Command
-import batoceraFiles # GLOBAL VARIABLES
-from generators.Generator import Generator
-import shutil
-import os
-from os import environ
-import configparser
-import controllersConfig
+import logging
 import subprocess
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-from utils.logger import get_logger
-eslog = get_logger(__name__)
+from ... import Command
+from ...batoceraPaths import CACHE, CONFIGS, SAVES, ensure_parents_and_open
+from ...controller import generate_sdl_game_controller_config
+from ...utils.configparser import CaseSensitiveRawConfigParser
+from ..Generator import Generator
+
+if TYPE_CHECKING:
+    from ...controller import ControllerMapping
+    from ...Emulator import Emulator
+    from ...input import InputMapping
+    from ...types import HotkeysContext
+
+
+eslog = logging.getLogger(__name__)
 
 class CitraGenerator(Generator):
 
+    def getHotkeysContext(self) -> HotkeysContext:
+        return {
+            "name": "citra",
+            "keys": { "exit": ["KEY_LEFTALT", "KEY_F4"] }
+        }
+
     # Main entry of the module
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
-        CitraGenerator.writeCITRAConfig(batoceraFiles.CONF + "/citra-emu/qt-config.ini", system, playersControllers)
+        CitraGenerator.writeCITRAConfig(CONFIGS / "citra-emu" / "qt-config.ini", system, playersControllers)
 
-        if os.path.exists('/usr/bin/citra-qt'):
+        if Path('/usr/bin/citra-qt').exists():
             commandArray = ['/usr/bin/citra-qt', rom]
         else:
             commandArray = ['/usr/bin/citra', rom]
-        return Command.Command(array=commandArray, env={ 
-            "XDG_CONFIG_HOME":batoceraFiles.CONF,
-            "XDG_DATA_HOME":batoceraFiles.SAVES + "/3ds",
-            "XDG_CACHE_HOME":batoceraFiles.CACHE,
-            "XDG_RUNTIME_DIR":batoceraFiles.SAVES + "/3ds/citra-emu",
+        return Command.Command(array=commandArray, env={
+            "XDG_CONFIG_HOME":CONFIGS,
+            "XDG_DATA_HOME":SAVES / "3ds",
+            "XDG_CACHE_HOME":CACHE,
+            "XDG_RUNTIME_DIR":SAVES / "3ds" / "citra-emu",
             "QT_QPA_PLATFORM":"xcb",
-            "SDL_GAMECONTROLLERCONFIG": controllersConfig.generateSdlGameControllerConfig(playersControllers),
+            "SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers),
             "SDL_JOYSTICK_HIDAPI": "0"
             }
         )
@@ -40,9 +54,13 @@ class CitraGenerator(Generator):
             return False
         else:
             return True
-    
+
     @staticmethod
-    def writeCITRAConfig(citraConfigFile, system, playersControllers):
+    def writeCITRAConfig(
+        citraConfigFile: Path,
+        system: Emulator,
+        playersControllers: ControllerMapping
+    ) -> None:
         # Pads
         citraButtons = {
             "button_a":      "a",
@@ -68,9 +86,8 @@ class CitraGenerator(Generator):
         }
 
         # ini file
-        citraConfig = configparser.RawConfigParser(strict=False)
-        citraConfig.optionxform=str             # Add Case Sensitive comportement
-        if os.path.exists(citraConfigFile):
+        citraConfig = CaseSensitiveRawConfigParser(strict=False)
+        if citraConfigFile.exists():
             citraConfig.read(citraConfigFile)
 
         ## [LAYOUT]
@@ -78,7 +95,7 @@ class CitraGenerator(Generator):
             citraConfig.add_section("Layout")
         # Screen Layout
         citraConfig.set("Layout", "custom_layout", "false")
-        citraConfig.set("Layout", "custom_layout\default", "true")
+        citraConfig.set("Layout", r"custom_layout\default", "true")
         if system.isOptSet('citra_screen_layout'):
             tab = system.config["citra_screen_layout"].split('-')
             citraConfig.set("Layout", "swap_screen",   tab[1])
@@ -86,8 +103,8 @@ class CitraGenerator(Generator):
         else:
             citraConfig.set("Layout", "swap_screen", "false")
             citraConfig.set("Layout", "layout_option", "0")
-        citraConfig.set("Layout", "swap_screen\default", "false")
-        citraConfig.set("Layout", "layout_option\default", "false")
+        citraConfig.set("Layout", r"swap_screen\default", "false")
+        citraConfig.set("Layout", r"layout_option\default", "false")
 
         ## [SYSTEM]
         if not citraConfig.has_section("System"):
@@ -97,44 +114,44 @@ class CitraGenerator(Generator):
             citraConfig.set("System", "is_new_3ds", "true")
         else:
             citraConfig.set("System", "is_new_3ds", "false")
-        citraConfig.set("System", "is_new_3ds\default", "false")
+        citraConfig.set("System", r"is_new_3ds\default", "false")
         # Language
         citraConfig.set("System", "region_value", str(getCitraLangFromEnvironment()))
-        citraConfig.set("System", "region_value\default", "false")
+        citraConfig.set("System", r"region_value\default", "false")
 
         ## [UI]
         if not citraConfig.has_section("UI"):
-            citraConfig.add_section("UI")       
+            citraConfig.add_section("UI")
         # Start Fullscreen
         citraConfig.set("UI", "fullscreen", "true")
-        citraConfig.set("UI", "fullscreen\default", "false")
+        citraConfig.set("UI", r"fullscreen\default", "true")
 
         # Batocera - Defaults
         citraConfig.set("UI", "displayTitleBars", "false")
         citraConfig.set("UI", "displaytitlebars", "false") # Emulator Bug
-        citraConfig.set("UI", "displayTitleBars\default", "false")
+        citraConfig.set("UI", r"displayTitleBars\default", "false")
         citraConfig.set("UI", "firstStart", "false")
-        citraConfig.set("UI", "firstStart\default", "false")
+        citraConfig.set("UI", r"firstStart\default", "false")
         citraConfig.set("UI", "hideInactiveMouse", "true")
-        citraConfig.set("UI", "hideInactiveMouse\default", "false")
+        citraConfig.set("UI", r"hideInactiveMouse\default", "false")
         citraConfig.set("UI", "enable_discord_presence", "false")
-        citraConfig.set("UI", "enable_discord_presence\default", "false")
+        citraConfig.set("UI", r"enable_discord_presence\default", "false")
 
         # Remove pop-up prompt on start
         citraConfig.set("UI", "calloutFlags", "1")
-        citraConfig.set("UI", "calloutFlags\default", "false")
+        citraConfig.set("UI", r"calloutFlags\default", "false")
         # Close without confirmation
         citraConfig.set("UI", "confirmClose", "false")
         citraConfig.set("UI", "confirmclose", "false") # Emulator Bug
-        citraConfig.set("UI", "confirmClose\default", "false")
+        citraConfig.set("UI", r"confirmClose\default", "false")
 
         # screenshots
-        citraConfig.set("UI", "Paths\screenshotPath", "/userdata/screenshots")
-        citraConfig.set("UI", "Paths\screenshotPath\default", "false")
+        citraConfig.set("UI", r"Paths\screenshotPath", "/userdata/screenshots")
+        citraConfig.set("UI", r"Paths\screenshotPath\default", "false")
 
         # don't check updates
-        citraConfig.set("UI", "Updater\check_for_update_on_start", "false")
-        citraConfig.set("UI", "Updater\check_for_update_on_start\default", "false")
+        citraConfig.set("UI", r"Updater\check_for_update_on_start", "false")
+        citraConfig.set("UI", r"Updater\check_for_update_on_start\default", "false")
 
         ## [RENDERER]
         if not citraConfig.has_section("Renderer"):
@@ -178,25 +195,25 @@ class CitraGenerator(Generator):
             citraConfig.set("Renderer", "use_vsync_new", "false")
         else:
             citraConfig.set("Renderer", "use_vsync_new", "true")
-        citraConfig.set("Renderer", "use_vsync_new\default", "true")
+        citraConfig.set("Renderer", r"use_vsync_new\default", "true")
         # Resolution Factor
         if system.isOptSet('citra_resolution_factor'):
             citraConfig.set("Renderer", "resolution_factor", system.config["citra_resolution_factor"])
         else:
             citraConfig.set("Renderer", "resolution_factor", "1")
-        citraConfig.set("Renderer", "resolution_factor\default", "false")
+        citraConfig.set("Renderer", r"resolution_factor\default", "false")
         # Async Shader Compilation
         if system.isOptSet('citra_async_shader_compilation') and system.config["citra_async_shader_compilation"] == '1':
             citraConfig.set("Renderer", "async_shader_compilation", "true")
         else:
             citraConfig.set("Renderer", "async_shader_compilation", "false")
-        citraConfig.set("Renderer", "async_shader_compilation\default", "false")
+        citraConfig.set("Renderer", r"async_shader_compilation\default", "false")
         # Use Frame Limit
         if system.isOptSet('citra_use_frame_limit') and system.config["citra_use_frame_limit"] == '0':
             citraConfig.set("Renderer", "use_frame_limit", "false")
         else:
             citraConfig.set("Renderer", "use_frame_limit", "true")
-        
+
         ## [WEB SERVICE]
         if not citraConfig.has_section("WebService"):
             citraConfig.add_section("WebService")
@@ -210,7 +227,7 @@ class CitraGenerator(Generator):
             citraConfig.set("Utility", "use_disk_shader_cache", "true")
         else:
             citraConfig.set("Utility", "use_disk_shader_cache", "false")
-        citraConfig.set("Utility", "use_disk_shader_cache\default", "false")
+        citraConfig.set("Utility", r"use_disk_shader_cache\default", "false")
         # Custom Textures
         if system.isOptSet('citra_custom_textures') and system.config["citra_custom_textures"] != '0':
             tab = system.config["citra_custom_textures"].split('-')
@@ -227,23 +244,23 @@ class CitraGenerator(Generator):
         citraConfig.set("Utility", "async_custom_loading\\default", "true")
         citraConfig.set("Utility", "custom_textures\\default", "false")
         citraConfig.set("Utility", "preload_textures\\default", "false")
-        
+
         ## [CONTROLS]
         if not citraConfig.has_section("Controls"):
             citraConfig.add_section("Controls")
 
         # Options required to load the functions when the configuration file is created
         if not citraConfig.has_option("Controls", "profiles\\size"):
-            citraConfig.set("Controls", "profile", 0)
-            citraConfig.set("Controls", "profile\\default", "true")    
+            citraConfig.set("Controls", "profile", "0")
+            citraConfig.set("Controls", "profile\\default", "true")
             citraConfig.set("Controls", "profiles\\1\\name", "default")
             citraConfig.set("Controls", "profiles\\1\\name\\default", "true")
-            citraConfig.set("Controls", "profiles\\size", 1)
+            citraConfig.set("Controls", "profiles\\size", "1")
 
         for index in playersControllers :
             controller = playersControllers[index]
             # We only care about player 1
-            if controller.player != "1":
+            if controller.player_number != 1:
                 continue
             for x in citraButtons:
                 citraConfig.set("Controls", "profiles\\1\\" + x, f'"{CitraGenerator.setButton(citraButtons[x], controller.guid, controller.inputs)}"')
@@ -252,13 +269,11 @@ class CitraGenerator(Generator):
             break
 
         ## Update the configuration file
-        if not os.path.exists(os.path.dirname(citraConfigFile)):
-            os.makedirs(os.path.dirname(citraConfigFile))
-        with open(citraConfigFile, 'w') as configfile:
+        with ensure_parents_and_open(citraConfigFile, 'w') as configfile:
             citraConfig.write(configfile)
 
     @staticmethod
-    def setButton(key, padGuid, padInputs):
+    def setButton(key: str, padGuid: str, padInputs: InputMapping) -> str | None:
         # It would be better to pass the joystick num instead of the guid because 2 joysticks may have the same guid
         if key in padInputs:
             input = padInputs[key]
@@ -272,7 +287,7 @@ class CitraGenerator(Generator):
                 return ("engine:sdl,guid:{},axis:{},direction:{},threshold:{}").format(padGuid, input.id, "+", 0.5)
 
     @staticmethod
-    def setAxis(key, padGuid, padInputs):
+    def setAxis(key: str, padGuid: str, padInputs: InputMapping) -> str:
         inputx = None
         inputy = None
 
@@ -292,7 +307,7 @@ class CitraGenerator(Generator):
         return ("axis_x:{},guid:{},axis_y:{},engine:sdl").format(inputx.id, padGuid, inputy.id)
 
     @staticmethod
-    def hatdirectionvalue(value):
+    def hatdirectionvalue(value: str) -> str:
         if int(value) == 1:
             return "up"
         if int(value) == 4:

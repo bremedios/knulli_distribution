@@ -1,18 +1,22 @@
-#!/usr/bin/env python3
+from __future__ import annotations
 
-from generators.Generator import Generator
-import Command
-import os
-import sys
 import json
-import utils.videoMode as videoMode
-import controllersConfig
-import math
-from utils.logger import get_logger
+import logging
+from typing import TYPE_CHECKING
 
-eslog = get_logger(__name__)
+from ... import Command
+from ...batoceraPaths import CONFIGS, mkdir_if_not_exists
+from ...controller import generate_sdl_game_controller_config
+from ...utils import videoMode
+from ..Generator import Generator
 
-bigPemuConfig = "/userdata/system/.bigpemu_userdata/BigPEmuConfig.bigpcfg"
+if TYPE_CHECKING:
+    from ...types import HotkeysContext
+
+
+eslog = logging.getLogger(__name__)
+
+bigPemuConfig = CONFIGS / "bigpemu" / "BigPEmuConfig.bigpcfg"
 
 # BigPEmu controller sequence, P1 only requires keyboard inputs
 # default standard bindings
@@ -21,7 +25,7 @@ P1_BINDINGS_SEQUENCE = {
     "B": {"button": "b", "keyboard": "22"},
     "A": {"button": "a", "keyboard": "7"},
     "Pause": {"button": "select", "keyboard": "20"},
-    "Option": {"button": "start", "keyboard": "26"},    
+    "Option": {"button": "start", "keyboard": "26"},
     "Pad-Up": {"button": "up", "keyboard": "82"},
     "Pad-Down": {"button": "down", "keyboard": "81"},
     "Pad-Left": {"button": "left", "keyboard": "80"},
@@ -57,9 +61,9 @@ P1_BINDINGS_SEQUENCE = {
     "Menu": {"buttons": ["start", "r2"], "keyboard": "41"},
     "Fast Forward": {"buttons": ["x", "r2"], "keyboard": "59"},
     "Rewind": {"blank": None},
-    "Save State": {"blank": None},
-    "Load State": {"blank": None},
-    "Screenshot": {"blank": None},
+    "Save State": {"keyboard": "66"},
+    "Load State": {"keyboard": "62"},
+    "Screenshot": {"keyboard": "63"},
     "Overlay": {"buttons": ["l3", "r2"]},
     "Chat": {"keyboard": "23"},
     "Blank1": {"blank": None},
@@ -69,14 +73,14 @@ P1_BINDINGS_SEQUENCE = {
     "Blank5": {"blank": None}
 }
 
-# BigPEmu controller sequence, P2+ 
+# BigPEmu controller sequence, P2+
 # default standard bindings
 P2_BINDINGS_SEQUENCE = {
     "C": {"button": "y"},
     "B": {"button": "b"},
     "A": {"button": "a"},
     "Pause": {"button": "select"},
-    "Option": {"button": "start"},    
+    "Option": {"button": "start"},
     "Pad-Up": {"button": "up"},
     "Pad-Down": {"button": "down"},
     "Pad-Left": {"button": "left"},
@@ -217,44 +221,47 @@ def generate_keyb_bindings(keyb_id):
 
 class BigPEmuGenerator(Generator):
 
+    def getHotkeysContext(self) -> HotkeysContext:
+        return {
+            "name": "bigpemu",
+            "keys": { "exit": ["KEY_LEFTALT", "KEY_F4"] }
+        }
+
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
 
-        directory = os.path.dirname(bigPemuConfig)
-        # Create the directory if it doesn't exist
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-        
+        mkdir_if_not_exists(bigPemuConfig.parent)
+
         # Delete the config file to update controllers
         # As it doesn't like to be updated
         # ¯\_(ツ)_/¯
-        if os.path.exists(bigPemuConfig):
-            os.remove(bigPemuConfig)
-        
+        if bigPemuConfig.exists():
+            bigPemuConfig.unlink()
+
         # Create the config file as it doesn't exist
-        if not os.path.exists(bigPemuConfig):
-            with open(bigPemuConfig, "w") as file:
+        if not bigPemuConfig.exists():
+            with bigPemuConfig.open('w') as file:
                 json.dump({}, file)
-        
+
         # Load or initialize the configuration
-        with open(bigPemuConfig, "r") as file:
+        with bigPemuConfig.open() as file:
             try:
                 config = json.load(file)
             except json.decoder.JSONDecodeError:
                 config = {}
-        
+
         # Ensure the necessary structure in the config
         if "BigPEmuConfig" not in config:
             config["BigPEmuConfig"] = {}
         if "Video" not in config["BigPEmuConfig"]:
             config["BigPEmuConfig"]["Video"] = {}
-        
+
         # Adjust basic settings
         config["BigPEmuConfig"]["Video"]["DisplayMode"] = 2
         config["BigPEmuConfig"]["Video"]["ScreenScaling"] = 5
         config["BigPEmuConfig"]["Video"]["DisplayWidth"] = gameResolution["width"]
         config["BigPEmuConfig"]["Video"]["DisplayHeight"] = gameResolution["height"]
         config["BigPEmuConfig"]["Video"]["DisplayFrequency"] = int(round(float(videoMode.getRefreshRate())))
-        
+
         # User selections
         if system.isOptSet("bigpemu_vsync"):
             config["BigPEmuConfig"]["Video"]["VSync"] = system.config["bigpemu_vsync"]
@@ -265,11 +272,11 @@ class BigPEmuGenerator(Generator):
         else:
             config["BigPEmuConfig"]["Video"]["ScreenAspect"] = 2
         config["BigPEmuConfig"]["Video"]["LockAspect"] = 1
-               
+
         # Controller config
         if "Input" not in config["BigPEmuConfig"]:
             config["BigPEmuConfig"]["Input"] = {}
-        
+
         # initial settings
         config["BigPEmuConfig"]["Input"]["DeviceCount"] = len(playersControllers)
         config["BigPEmuConfig"]["Input"]["AnalDeadMice"] = 0.25
@@ -296,13 +303,13 @@ class BigPEmuGenerator(Generator):
                     config["BigPEmuConfig"]["Input"]["Device{}".format(nplayer)]["HeadTrackerSpring"] = 0
                     if "Bindings" not in config["BigPEmuConfig"]["Input"]["Device{}".format(nplayer)]:
                         config["BigPEmuConfig"]["Input"]["Device{}".format(nplayer)]["Bindings"] = []
-                    
+
                     # Loop through BINDINGS_SEQUENCE to maintain the specific order of bindings
                     if nplayer == 0:
                         BINDINGS_SEQUENCE = P1_BINDINGS_SEQUENCE
                     else:
                         BINDINGS_SEQUENCE = P2_BINDINGS_SEQUENCE
-                    
+
                     for binding_key, binding_info in BINDINGS_SEQUENCE.items():
                         #eslog.debug(f"Binding sequence input: {binding_key}")
                         if "button" in binding_info:
@@ -326,18 +333,18 @@ class BigPEmuGenerator(Generator):
                                 input = pad.inputs[x]
                                 # workaround values for SDL2
                                 if input.type == "button":
-                                    input.value = 0
+                                    input.value = "0"
                                 if input.type == "hat":
-                                    input.id = 134
+                                    input.id = "134"
                                 if input.name == "joystick1left":
-                                    input.id = 128
+                                    input.id = "128"
                                 if input.name == "joystick1up":
-                                    input.id = 129
+                                    input.id = "129"
                                 if input.name == "joystick2left":
-                                    input.id = 131
+                                    input.id = "131"
                                 if input.name == "joystick2up":
-                                    input.id = 132
-                                
+                                    input.id = "132"
+
                                 # Generate the bindings if input name matches the button in sequence
                                 if input.name == binding_info.get("button") or input.name in binding_info.get("buttons", []):
                                     # Handle combo bindings
@@ -349,11 +356,11 @@ class BigPEmuGenerator(Generator):
                                                 button_input = pad.inputs[y]
                                                 # workaround values here too
                                                 if button_input.type == "button":
-                                                    button_input.value = 0
+                                                    button_input.value = "0"
                                                 if button_input.name == "l2":
-                                                    button_input.id = 130
+                                                    button_input.id = "130"
                                                 if button_input.name == "r2":
-                                                    button_input.id = 133
+                                                    button_input.id = "133"
                                                 if button_input.name == button_name:
                                                     button_bindings.extend([button_input.id, button_input.value])
                                         if len(button_bindings) == len(button_combos) * 2:
@@ -385,25 +392,56 @@ class BigPEmuGenerator(Generator):
                             else:
                                 bindings = generate_func()
                                 config["BigPEmuConfig"]["Input"]["Device{}".format(nplayer)]["Bindings"].extend(bindings)
-            
+
             # Onto the next controller as necessary
             nplayer += 1
+
+        # Scripts config
+        if "ScriptsEnabled" not in config["BigPEmuConfig"]:
+            config["BigPEmuConfig"]["ScriptsEnabled"] = []
+        else:
+            # User selections for ScriptsEnabled options (individual scripts)
+            scripts = [
+                ("avp", "bigpemu_avp"),
+                ("avp_mp", "bigpemu_avp_mp"),
+                ("brett_hull_hockey", "bigpemu_brett_hull_hockey"),
+                ("checkered_flag", "bigpemu_checkered_flag"),
+                ("cybermorph", "bigpemu_cybermorph"),
+                ("iron_soldier", "bigpemu_iron_soldier"),
+                ("mc3d_vr", "bigpemu_mc3d_vr"),
+                ("t2k_rotary", "bigpemu_t2k_rotary"),
+                ("wolf3d", "bigpemu_wolf3d")
+            ]
+            for script_name, script_option in scripts:
+                if system.isOptSet(script_option):
+                    # Check if the value is "1" to enable the script
+                    if system.config[script_option] == "1":
+                        config["BigPEmuConfig"]["ScriptsEnabled"].append(script_name)
+            
+            # Remove duplicates just in case (as a precaution)
+            config["BigPEmuConfig"]["ScriptsEnabled"] = list(set(config["BigPEmuConfig"]["ScriptsEnabled"]))
         
+        # Screen filter
+        if system.isOptSet("bigpemu_screenfilter"):
+            config["BigPEmuConfig"]["Video"]["ScreenFilter"] = system.config["bigpemu_screenfilter"]
+        else:
+            config["BigPEmuConfig"]["Video"]["ScreenFilter"] = 0
+
         # Close off input
         config["BigPEmuConfig"]["Input"]["InputVer"] = 2
         config["BigPEmuConfig"]["Input"]["InputPluginVer"] = 666
-        
-        with open(bigPemuConfig, "w") as file:
+
+        with bigPemuConfig.open("w") as file:
             json.dump(config, file, indent=4)
-        
+
         # Run the emulator
-        commandArray = ["/usr/bigpemu/bigpemu", rom]
+        commandArray = ["/usr/bigpemu/bigpemu", rom, "-cfgpathabs", str(bigPemuConfig)]
 
         environment = {
-            "SDL_GAMECONTROLLERCONFIG": controllersConfig.generateSdlGameControllerConfig(playersControllers),
+            "SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers),
             "SDL_JOYSTICK_HIDAPI": "0"
         }
-        
+
         return Command.Command(array=commandArray, env=environment)
 
     def getInGameRatio(self, config, gameResolution, rom):

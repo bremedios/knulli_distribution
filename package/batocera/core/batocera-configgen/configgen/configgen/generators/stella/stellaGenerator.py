@@ -1,13 +1,12 @@
-#!/usr/bin/env python
-import Command
-from generators.Generator import Generator
-import controllersConfig
-import os
-import batoceraFiles
-import subprocess
+from __future__ import annotations
 
-from utils.logger import get_logger
-eslog = get_logger(__name__)
+import logging
+
+from ... import Command
+from ...controller import generate_sdl_game_controller_config
+from ..Generator import Generator
+
+eslog = logging.getLogger(__name__)
 
 class StellaGenerator(Generator):
 
@@ -18,6 +17,6 @@ class StellaGenerator(Generator):
         return Command.Command(
             array=commandArray,
             env={
-                'SDL_GAMECONTROLLERCONFIG': controllersConfig.generateSdlGameControllerConfig(playersControllers)
+                'SDL_GAMECONTROLLERCONFIG': generate_sdl_game_controller_config(playersControllers)
             }
         )

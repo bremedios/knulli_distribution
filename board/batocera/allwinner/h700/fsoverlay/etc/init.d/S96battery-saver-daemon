@@ -18,7 +18,7 @@ start_daemon() {
 stop_daemon() {
     echo "Stopping $DAEMON_NAME."
     start-stop-daemon --stop --quiet --pidfile "$PIDFILE" \
-        && { echo "$DAEMON_NAME stopped"; rm -f "$PIDFILE"; } || { echo "$DAEMON_NAME is not running."; exit 1; }
+        && { echo "$DAEMON_NAME stopped"; rm -f "$PIDFILE"; } || { echo "$DAEMON_NAME is not running."; }
 }
 
 # Sanity check

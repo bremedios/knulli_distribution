@@ -37,5 +37,5 @@ then
 	echo "${EXTRA}"
     fi
 else
-    cat /usr/share/batocera/batocera.version | sed -e s+"^\([0-9]*\)"+"\1${EXTRA}"+
+    echo -n "$(cat /usr/share/batocera/batocera.version)" && echo " [${EXTRA}]"
 fi

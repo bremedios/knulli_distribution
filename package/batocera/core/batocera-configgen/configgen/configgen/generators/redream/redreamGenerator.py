@@ -1,33 +1,44 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import Command
-from generators.Generator import Generator
-import controllersConfig
-from shutil import copyfile
-import os
-import batoceraFiles
-import filecmp
 import codecs
+import filecmp
+from pathlib import Path
+from shutil import copyfile
+from typing import TYPE_CHECKING, Final
 
-redream_file = "/usr/bin/redream"
-redreamConfig = batoceraFiles.CONF + "/redream"
+from ... import Command
+from ...batoceraPaths import CONFIGS, ROMS, mkdir_if_not_exists
+from ...controller import generate_sdl_game_controller_config
+from ..Generator import Generator
+
+if TYPE_CHECKING:
+    from ...types import HotkeysContext
+
+redream_file: Final = Path("/usr/bin/redream")
+redreamConfig: Final = CONFIGS / "redream"
+redreamRoms: Final = ROMS / "dreamcast"
 
 class RedreamGenerator(Generator):
 
+    def getHotkeysContext(self) -> HotkeysContext:
+        return {
+            "name": "redream",
+            "keys": { "exit": ["KEY_LEFTALT", "KEY_F4"] }
+        }
+
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
-        redream_exec = redreamConfig + "/redream"
+        redream_exec = redreamConfig / "redream"
 
-        if not os.path.exists(redreamConfig):
-            os.makedirs(redreamConfig)
+        mkdir_if_not_exists(redreamConfig)
 
-        if not os.path.exists(redream_exec) or not filecmp.cmp(redream_file, redream_exec):
+        if not redream_exec.exists() or not filecmp.cmp(redream_file, redream_exec):
             copyfile(redream_file, redream_exec)
-            os.chmod(redream_exec, 0o0775)
-        
-        configFileName = redreamConfig + "/redream.cfg"
-        f = codecs.open(configFileName, "w")
+            redream_exec.chmod(0o0775)
+
+        configFileName = redreamConfig / "redream.cfg"
+        f = codecs.open(str(configFileName), "w")
         # set the roms path
-        f.write("gamedir=/userdata/roms/dreamcast\n")
+        f.write(f"gamedir={redreamRoms}\n")
         # force fullscreen
         f.write("mode=exclusive fullscreen\n")
         f.write("fullmode=exclusive fullscreen\n")
@@ -97,7 +108,7 @@ class RedreamGenerator(Generator):
                         if input.name == "joystick1up":
                             fullprofile = fullprofile + "ljoy_up:-axis{},".format(axisid)
                             fullprofile = fullprofile + "ljoy_down:+axis{},".format(axisid)
-                
+
                 # special nintendo workaround since redream makes no sense...
                 if controller.guid == "030000007e0500000920000011810000":
                     fullprofile = ctrlprofile + "b:joy1,a:joy0,dpad_down:hat1,ljoy_left:-axis0,ljoy_right:+axis0,ljoy_up:-axis1,ljoy_down:+axis1,ltrig:joy6,dpad_left:hat2,rtrig:joy7,dpad_right:hat3,turbo:joy8,start:joy9,dpad_up:hat0,y:joy2,x:joy3,"
@@ -108,7 +119,7 @@ class RedreamGenerator(Generator):
                     written_guids.add(controller.guid)
                     f.write((fullprofile)+ "\n")
                 nplayer = nplayer + 1
-        
+
         # change settings as per users options
         # [video]
         f.write("width={}\n".format(gameResolution["width"]))
@@ -152,7 +163,7 @@ class RedreamGenerator(Generator):
             f.write("cable={}".format(system.config["redreamCable"]) + "\n")
         else:
             f.write("cable=vga\n")
-        
+
         f.write
         f.close()
 
@@ -160,7 +171,7 @@ class RedreamGenerator(Generator):
         return Command.Command(
             array=commandArray,
             env={
-                'SDL_GAMECONTROLLERCONFIG': controllersConfig.generateSdlGameControllerConfig(playersControllers),
+                'SDL_GAMECONTROLLERCONFIG': generate_sdl_game_controller_config(playersControllers),
                 'SDL_JOYSTICK_HIDAPI': '0'
             }
         )
@@ -170,6 +181,6 @@ class RedreamGenerator(Generator):
             if config['redreamRatio'] == "16:9" or config['redreamRatio'] == "stretch":
                 return 16/9
             else:
-                return 4/3      
+                return 4/3
         else:
             return 4/3

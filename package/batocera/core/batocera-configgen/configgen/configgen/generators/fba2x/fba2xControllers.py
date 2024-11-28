@@ -1,6 +1,11 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import os
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...controller import Controller, ControllerMapping
+    from ...utils.configparser import CaseSensitiveConfigParser
 
 # Map an emulationstation button name to the corresponding fba2x name
 fba4bnts = {
@@ -50,7 +55,7 @@ fbaspecials = {
                 'hotkey': 'HOTKEY'
               }
 
-def updateControllersConfig(iniConfig, rom, controllers):
+def updateControllersConfig(iniConfig: CaseSensitiveConfigParser, rom: str, controllers: ControllerMapping) -> None:
     # remove any previous section to remove all configured keys
     if iniConfig.has_section("Joystick"):
         iniConfig.remove_section("Joystick")
@@ -66,7 +71,7 @@ def updateControllersConfig(iniConfig, rom, controllers):
         updateControllerConfig(iniConfig, controller, controllers[controller], is6btn(rom))
 
 # Create a configuration file for a given controller
-def updateControllerConfig(iniConfig, player, controller, special6=False):
+def updateControllerConfig(iniConfig: CaseSensitiveConfigParser, player: int, controller: Controller, special6: bool = False) -> None:
     fbaBtns = fba4bnts
     if special6:
         fbaBtns = fba6bnts
@@ -90,18 +95,18 @@ def updateControllerConfig(iniConfig, player, controller, special6=False):
             input = controller.inputs[btnkey]
             iniConfig.set("Joystick", f'{btnvalue}_{player}', input.id)
 
-    if player == '1':
+    if player == 1:
         for btnkey in fbaspecials:
             btnvalue = fbaspecials[btnkey]
             if btnkey in controller.inputs:
                 input = controller.inputs[btnkey]
                 iniConfig.set("Joystick", f'{btnvalue}', input.id)
 
-def is6btn(rom):
+def is6btn(rom: str) -> bool:
     sixBtnGames = ['sfa', 'sfz', 'sf2', 'dstlk', 'hsf2', 'msh', 'mshvsf', 'mvsc', 'nwarr', 'ssf2', 'vsav', 'vhunt', 'xmvsf', 'xmcota']
 
-    rom = os.path.basename(rom)
+    rom_name = Path(rom).name
     for game in sixBtnGames:
-        if game in rom:
+        if game in rom_name:
             return True
     return False

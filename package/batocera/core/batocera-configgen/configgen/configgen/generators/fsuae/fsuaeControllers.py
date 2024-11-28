@@ -1,11 +1,17 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
-import batoceraFiles
-import os.path
+from typing import TYPE_CHECKING
+
+from ...batoceraPaths import mkdir_if_not_exists
+from .fsuaePaths import FSUAE_CONFIG_DIR
+
+if TYPE_CHECKING:
+    from ...controller import ControllerMapping
+    from ...Emulator import Emulator
+
 
 # Create the controller configuration file
-def generateControllerConfig(system, playersControllers):
+def generateControllerConfig(system: Emulator, playersControllers: ControllerMapping) -> None:
 
     fsuaeMapping = {
         'a':      'east_button',   'b':        'south_button',
@@ -26,17 +32,16 @@ def generateControllerConfig(system, playersControllers):
                                 'joystick2up': 'joystick2down', 'joystick2left': 'joystick2right',}
 
     # create the directory for the first time
-    confDirectory = batoceraFiles.fsuaeConfig + "/Controllers"
-    if not os.path.exists(confDirectory):
-        os.makedirs(confDirectory)
+    confDirectory = FSUAE_CONFIG_DIR / "Controllers"
+    mkdir_if_not_exists(confDirectory)
 
     for playercontroller, pad in sorted(playersControllers.items()):
-        configFileName = "{}/{}".format(batoceraFiles.fsuaeConfig, "Controllers/" + pad.guid + "_linux.conf")
-        f = open(configFileName, "w")
+        configFileName = confDirectory / f"{pad.guid}_linux.conf"
+        f = configFileName.open("w")
 
         # fs-uae-controller
         f.write("[fs-uae-controller]\n")
-        f.write("name = " + pad.realName + "\n")
+        f.write("name = " + pad.real_name + "\n")
         f.write("platform = linux\n")
         f.write("\n")
 

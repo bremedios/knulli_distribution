@@ -1,24 +1,40 @@
-#!/usr/bin/env python
-import Command
-import batoceraFiles
-from generators.Generator import Generator
-from utils.logger import get_logger
-import controllersConfig
+from __future__ import annotations
+
+import logging
 import os
+from pathlib import Path
+from typing import TYPE_CHECKING, Final
 
-eslog = get_logger(__name__)
-PICO8_BIN_PATH="/userdata/bios/pico-8/pico8"
-PICO8_ROOT_PATH="/userdata/roms/pico8/"
-PICO8_CONTROLLERS="/userdata/system/.lexaloffle/pico-8/sdl_controllers.txt"
-PICO8_CONFIG_PATH="/userdata/system/.lexaloffle/pico-8/config.txt"
-VOX_BIN_PATH="/userdata/bios/voxatron/vox"
-VOX_ROOT_PATH="/userdata/roms/voxatron/"
-VOX_CONTROLLERS="/userdata/system/.lexaloffle/Voxatron/sdl_controllers.txt"
+from ... import Command
+from ...batoceraPaths import BIOS, HOME, ROMS, SCREENSHOTS, ensure_parents_and_open
+from ...controller import generate_sdl_game_controller_config
+from ..Generator import Generator
 
+if TYPE_CHECKING:
+    from ...types import HotkeysContext
+
+eslog = logging.getLogger(__name__)
+
+PICO8_BIN_PATH: Final = BIOS / "pico-8" / "pico8"
+PICO8_ROOT_PATH: Final = ROMS / "pico8"
+PICO8_CONTROLLERS: Final = HOME / ".lexaloffle" / "pico-8" / "sdl_controllers.txt"
+PICO8_CONFIG_PATH=HOME / ".lexaloffle" / "pico-8" / "config.txt"
+VOX_BIN_PATH: Final = BIOS / "voxatron" / "vox"
+VOX_ROOT_PATH: Final = ROMS / "voxatron"
+VOX_CONTROLLERS: Final = HOME / ".lexaloffle" / "Voxatron" / "sdl_controllers.txt"
 
 # Generator for the official pico8 binary from Lexaloffle
 class LexaloffleGenerator(Generator):
+
+    def getHotkeysContext(self) -> HotkeysContext:
+        return {
+            "name": "lexaloffle",
+            "keys": { "exit": ["KEY_LEFTCTRL", "KEY_Q"] }
+        }
+
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
+        rom_path = Path(rom)
+
         if (system.name == "pico8"):
             BIN_PATH=PICO8_BIN_PATH
             CONTROLLERS=PICO8_CONTROLLERS
@@ -30,7 +46,7 @@ class LexaloffleGenerator(Generator):
         else:
             eslog.error(f"The Lexaloffle generator has been called for an unknwon system: {system.name}.")
             return -1
-        if not os.path.exists(BIN_PATH):
+        if not BIN_PATH.exists():
             eslog.error(f"Lexaloffle official binary not found at {BIN_PATH}")
             return -1
         if not os.access(BIN_PATH, os.X_OK):
@@ -80,42 +96,28 @@ class LexaloffleGenerator(Generator):
         config_settings["transform_screen"] = "0" # 129 flip horizontally // 130 flip vertically // 133 rotate CW 90 degrees // 134 rotate CW 180 degrees // 135 rotate CW 270 degrees
         config_settings["gfx_grid_lines"] = "0" # 0 off  > 1: colour to draw pixel grid in the gfx editor at zoom:8 and zoom:4 (16 for black)
         config_settings["capture_timestamps"] = "0" # 0 sequential (foo_0.png, foo_1.png)    1 timestamp (foo_20240115_120823.png)
-        
-        # Display FPS
-        if system.isOptSet("pico8_showfps") and system.config['pico8_showfps'] == '1':
-            config_settings["show_fps"] = "1"
-        else:
-            config_settings["show_fps"] = "0"
-        
-        # Filter mature games in splore
-        if system.isOptSet("pico_splorefilter") and system.config['pico_splorefilter'] == '1':
-            config_settings["splore_filter"] = "1"
-        else:
-            config_settings["splore_filter"] = "0"         
-        
-        # Number of milliseconds to sleep each frame. Try 10 to conserve battery power
-        if system.isOptSet("pico8_framesleep"):
-            config_settings["foreground_sleep_ms"] = system.config['pico8_framesleep']
-        else:
-            config_settings["foreground_sleep_ms"] = "1"
-            
-        # Write config_settings to config.txt
-        self.write_config(config_settings)
-        
+
         # The command to run
         commandArray = [BIN_PATH]
         
         basename = os.path.basename(rom)
         rombase, romext = os.path.splitext(basename)
 
+        # Display FPS
+        if system.config['showFPS'] == 'true':
+                commandArray.extend(["-show_fps", "1"])
+        else:
+                commandArray.extend(["-show_fps", "0"])
+
+        rombase = rom_path.stem
+
         # .m3u support for multi-cart pico-8
-        if (romext.lower() == ".m3u"):
-            with open(rom, "r") as fpin:
+        if rom_path.suffix.lower() == ".m3u":
+            with rom_path.open() as fpin:
                 lines = fpin.readlines()
-            fullpath = os.path.dirname(os.path.abspath(rom)) + '/' + lines[0].strip()
-            localpath, localrom = os.path.split(fullpath)
-            commandArray.extend(["-root_path", localpath])
-            rom = fullpath
+            fullpath = rom_path.absolute().parent / lines[0].strip()
+            commandArray.extend(["-root_path", fullpath.parent])
+            rom_path = fullpath
         else:
             commandArray.extend(["-root_path", ROOT_PATH]) # store carts from splore
 
@@ -131,8 +133,8 @@ class LexaloffleGenerator(Generator):
         controllersdir = os.path.dirname(CONTROLLERS)
         if not os.path.exists(controllersdir):
                 os.makedirs(controllersdir)
-        controllersconfig = controllersConfig.generateSdlGameControllerConfig(playersControllers)
-        with open(CONTROLLERS, "w") as file:
+        controllersconfig = generate_sdl_game_controller_config(playersControllers)
+        with ensure_parents_and_open(CONTROLLERS, "w") as file:
                file.write(controllersconfig)
 
         return Command.Command(array=commandArray, env={})
