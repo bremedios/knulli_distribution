@@ -1,11 +1,5 @@
 #!/bin/bash
 
-BOARD=$(cat /boot/boot/batocera.board)
-# We only want the script to run for these devices
-if [ "$BOARD" != "rg40xx-h" ] && [ "$BOARD" != "rg40xx-v" ]; then
-    exit 1
-fi
-
 KEY_LED_RETRO_ACHIEVEMENTS="led.retroachievements"
 EFFECT_ON=1
 

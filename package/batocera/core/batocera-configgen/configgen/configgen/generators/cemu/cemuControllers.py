@@ -1,18 +1,24 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import batoceraFiles
-import os
-import pyudev
 import xml.etree.cElementTree as ET
-from os import path
+from typing import TYPE_CHECKING, Any
 
-profilesDir = path.join(batoceraFiles.CONF, 'cemu', 'controllerProfiles')
+import pyudev
+
+from ...batoceraPaths import mkdir_if_not_exists
+from .cemuPaths import CEMU_CONTROLLER_PROFILES
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...controller import Controller, ControllerMapping
+    from ...Emulator import Emulator
 
 # Create the controller configuration file
 # First controller will ALWAYS be a Gamepad
 # Additional controllers will either be a Pro Controller or Wiimote
 
-def generateControllerConfig(system, playersControllers):
+def generateControllerConfig(system: Emulator, playersControllers: ControllerMapping) -> None:
 
     # -= Wii U controller types =-
     GAMEPAD = "Wii U GamePad"
@@ -162,30 +168,30 @@ def generateControllerConfig(system, playersControllers):
         }
     }
 
-    def getOption(option, defaultValue):
+    def getOption(option: str, defaultValue: str) -> Any:
         if (system.isOptSet(option)):
             return system.config[option]
         else:
             return defaultValue
 
-    def addTextElement(parent, name, value):
+    def addTextElement(parent: ET.Element, name: str, value: str) -> None:
         element = ET.SubElement(parent, name)
         element.text = value
 
-    def addAnalogControl(parent, name):
+    def addAnalogControl(parent: ET.Element, name: str) -> None:
         element = ET.SubElement(parent, name)
         addTextElement(element, "deadzone", DEFAULT_DEADZONE)
         addTextElement(element, "range", DEFAULT_RANGE)
 
-    def getConfigFileName(controller):
-        return path.join(profilesDir, "controller{}.xml".format(controller))
+    def getConfigFileName(controller: int) -> Path:
+        return CEMU_CONTROLLER_PROFILES / f"controller{controller}.xml"
 
-    def isWiimote(pad):
-        return WIIMOTE_NAME == pad.realName
+    def isWiimote(pad: Controller) -> bool:
+        return WIIMOTE_NAME == pad.real_name
 
-    def findWiimoteType(pad):
+    def findWiimoteType(pad: Controller) -> str:
         context = pyudev.Context()
-        device = pyudev.Devices.from_device_file(context, pad.dev)
+        device = pyudev.Devices.from_device_file(context, pad.device_path)
         names = []
         for input_device in context.list_devices(parent=device.find_parent('hid')).match_subsystem('input'):
             if 'NAME' in input_device.properties:
@@ -204,14 +210,13 @@ def generateControllerConfig(system, playersControllers):
             return WIIMOTE_TYPE_CORE
 
     # Make controller directory if it doesn't exist
-    if not path.isdir(profilesDir):
-        os.mkdir(profilesDir)
+    mkdir_if_not_exists(CEMU_CONTROLLER_PROFILES)
 
     # Purge old controller files
     for counter in range(0,8):
         configFileName = getConfigFileName(counter)
-        if path.isfile(configFileName):
-            os.remove(configFileName)
+        if configFileName.is_file():
+            configFileName.unlink()
 
     ## CONTROLLER: Create the config xml files
     nplayer = 0
@@ -221,9 +226,9 @@ def generateControllerConfig(system, playersControllers):
     # sort pads by index
     pads_by_index = playersControllers
     dict(sorted(pads_by_index.items(), key=lambda kv: kv[1].index))
-    guid_n = {}
-    guid_count = {}
-    for playercontroller, pad in pads_by_index.items():
+    guid_n: dict[int, int] = {}
+    guid_count: dict[str, int] = {}
+    for _, pad in pads_by_index.items():
         if pad.guid in guid_count:
             guid_count[pad.guid] += 1
         else:
@@ -266,7 +271,7 @@ def generateControllerConfig(system, playersControllers):
         controllerNode = ET.SubElement(root, 'controller')
         addTextElement(controllerNode, 'api', api)
         addTextElement(controllerNode, 'uuid', "{}_{}".format(guid_n[pad.index], pad.guid)) # controller guid
-        addTextElement(controllerNode, 'display_name', pad.realName) # controller name
+        addTextElement(controllerNode, 'display_name', pad.real_name) # controller name
         addTextElement(controllerNode, 'rumble', getOption('cemu_rumble', '0')) # % chosen
         addAnalogControl(controllerNode, 'axis')
         addAnalogControl(controllerNode, 'rotation')
@@ -281,7 +286,7 @@ def generateControllerConfig(system, playersControllers):
             addTextElement(entryNode, "button", value)
 
         # Save to file
-        with open(getConfigFileName(nplayer), 'wb') as handle:
+        with getConfigFileName(nplayer).open('wb') as handle:
             tree = ET.ElementTree(root)
             ET.indent(tree, space="  ", level=0)
             tree.write(handle, encoding='UTF-8', xml_declaration=True)

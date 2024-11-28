@@ -5,11 +5,11 @@
 ### ADDED ###
 - Device support
     - support for RG40XX-H, RG40XX-V, RG CubeXX
-    - preliminary support for the TrimUI Brick    
+    - preliminary support for the TrimUI Brick
     - initial work for the Miyoo A30 (still WIP, not working)
 - OS features
     - gammas fix for joystick cardinal snapping
-    - battery saver mode. (In batocera.conf valid modes for batterysavermode=dim|suspend|shutdown. batterysavertimer=(number in seconds >=60)
+    - battery saver mode. (under system settings -> power management)
     - HDMI output modes for 480p, 720p, and 1080p.
     - Bluetooth support for the TSP
     - lid shutdown service for RG35XX-SP to change lid closed behavior to shutdown
@@ -34,6 +34,7 @@
     - Drastic-Steward emulator. (Note that hotkeys and inputs differ from Drastic!)
 
 ### FIXED ###
+- directional inputs sometimes getting stuck in official pico8
 - inconsistent IP address when booting/enabling Wi-Fi due to multiple wlans present. Now always enables first wlan found and disables any others.
 - issue with Wi-Fi not connecting at boot (again). WPA3 still doesn't work
 - issue with Wi-Fi not working with Wi-Fi dongles on affected devices
@@ -47,6 +48,7 @@
 
 ### CHANGED / IMPROVED
 - OS features
+    - changed default cpu governor to interactive
     - updated EmulationStation to the latest version, it's now maintained as separate fork
     - default EmulationStation screensaver is now slideshow
     - volume/brightness can be adjusted by holding down inputs

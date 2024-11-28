@@ -1,49 +1,56 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import os
 import configparser
-import Command
-from generators.Generator import Generator
-import batoceraFiles
+import logging
 import shutil
-from utils.logger import get_logger
-import controllersConfig
-from utils.batoceraServices import batoceraServices
-from . import vpinballWindowing
-from . import vpinballOptions
+from typing import TYPE_CHECKING
 
-eslog = get_logger(__name__)
+from ... import Command
+from ...batoceraPaths import CONFIGS, mkdir_if_not_exists
+from ...controller import generate_sdl_game_controller_config
+from ...utils.batoceraServices import batoceraServices
+from ...utils.configparser import CaseSensitiveConfigParser
+from ..Generator import Generator
+from . import vpinballOptions, vpinballWindowing
+
+if TYPE_CHECKING:
+    from ...types import HotkeysContext
+
+
+eslog = logging.getLogger(__name__)
 
 class VPinballGenerator(Generator):
 
+    def getHotkeysContext(self) -> HotkeysContext:
+        return {
+            "name": "vpinball",
+            "keys": { "exit": "KEY_Q", "coin": "KEY_5", "menu": "KEY_ESC", "pause": "KEY_ESC" }
+        }
+
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
         # files
-        vpinballConfigPath     = batoceraFiles.CONF + "/vpinball"
-        vpinballConfigFile     = vpinballConfigPath + "/VPinballX.ini"
-        vpinballLogFile        = vpinballConfigPath + "/vpinball.log"
-        vpinballPinmameIniPath = batoceraFiles.CONF + "/vpinball/pinmame/ini"
+        vpinballConfigPath     = CONFIGS / "vpinball"
+        vpinballConfigFile     = vpinballConfigPath  / "VPinballX.ini"
+        vpinballLogFile        = vpinballConfigPath / "vpinball.log"
+        vpinballPinmameIniPath = vpinballConfigPath / "pinmame" / "ini"
 
         # create vpinball config directory and default config file if they don't exist
-        if not os.path.exists(vpinballConfigPath):
-            os.makedirs(vpinballConfigPath)
-        if not os.path.exists(vpinballConfigFile):
+        mkdir_if_not_exists(vpinballConfigPath)
+        if not vpinballConfigFile.exists():
             shutil.copy("/usr/bin/vpinball/assets/Default_VPinballX.ini", vpinballConfigFile)
-        if not os.path.exists(vpinballPinmameIniPath):
-            os.makedirs(vpinballPinmameIniPath)
-        if os.path.exists(vpinballLogFile):
-            os.rename(vpinballLogFile, vpinballLogFile + ".1")
+        mkdir_if_not_exists(vpinballPinmameIniPath)
+        if vpinballLogFile.exists():
+            vpinballLogFile.rename(vpinballLogFile.with_suffix(f"{vpinballLogFile.suffix}.1"))
 
         ## [ VPinballX.ini ] ##
         try:
-            vpinballSettings = configparser.ConfigParser(interpolation=None, allow_no_value=True)
-            vpinballSettings.optionxform = str
+            vpinballSettings = CaseSensitiveConfigParser(interpolation=None, allow_no_value=True)
             vpinballSettings.read(vpinballConfigFile)
         except configparser.DuplicateOptionError as e:
             eslog.debug(f"Error reading VPinballX.ini: {e}")
             eslog.debug(f"*** Using default VPinballX.ini file ***")
             shutil.copy("/usr/bin/vpinball/assets/Default_VPinballX.ini", vpinballConfigFile)
-            vpinballSettings = configparser.ConfigParser(interpolation=None, allow_no_value=True)
-            vpinballSettings.optionxform = str
+            vpinballSettings = CaseSensitiveConfigParser(interpolation=None, allow_no_value=True)
             vpinballSettings.read(vpinballConfigFile)
 
         # init sections
@@ -70,7 +77,7 @@ class VPinballGenerator(Generator):
             vpinballSettings.set("Standalone", "DMDServer","0")
 
         # Save VPinballX.ini
-        with open(vpinballConfigFile, 'w') as configfile:
+        with vpinballConfigFile.open('w') as configfile:
             vpinballSettings.write(configfile)
 
         # set the config path to be sure
@@ -82,7 +89,7 @@ class VPinballGenerator(Generator):
         ]
 
         # SDL_RENDER_VSYNC is causing perf issues (set by emulatorlauncher.py)
-        return Command.Command(array=commandArray, env={"SDL_GAMECONTROLLERCONFIG": controllersConfig.generateSdlGameControllerConfig(playersControllers), "SDL_RENDER_VSYNC": "0"})
+        return Command.Command(array=commandArray, env={"SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers), "SDL_RENDER_VSYNC": "0"})
 
     def getInGameRatio(self, config, gameResolution, rom):
         return 16/9
