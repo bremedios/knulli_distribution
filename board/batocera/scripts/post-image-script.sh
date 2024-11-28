@@ -100,7 +100,7 @@ do
     rm -f "${BATOCERA_BINARIES_DIR}/boot.vfat" || exit 1
     rm -f "${BATOCERA_BINARIES_DIR}/userdata.ext4" || exit 1
     mv "${BATOCERA_BINARIES_DIR}/batocera.img" "${BATOCERAIMG}" || exit 1
-    gzip "${BATOCERAIMG}" || exit 1
+    pigz "${BATOCERAIMG}" || exit 1
 
     # rename the boot to boot_arch
     mv "${BATOCERA_BINARIES_DIR}/boot" "${BOOTNAMEDDIR}" || exit 1

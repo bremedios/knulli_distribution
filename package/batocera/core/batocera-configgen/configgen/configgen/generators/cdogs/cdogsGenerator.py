@@ -1,18 +1,31 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import Command
-from generators.Generator import Generator
-import controllersConfig
+import logging
 import os
-from utils.logger import get_logger
+from typing import TYPE_CHECKING
 
-eslog = get_logger(__name__)
+from ... import Command
+from ...batoceraPaths import ROMS
+from ...controller import generate_sdl_game_controller_config
+from ..Generator import Generator
+
+if TYPE_CHECKING:
+    from ...types import HotkeysContext
+
+
+eslog = logging.getLogger(__name__)
 
 class CdogsGenerator(Generator):
 
+    def getHotkeysContext(self) -> HotkeysContext:
+        return {
+            "name": "cdogs",
+            "keys": { "exit": ["KEY_LEFTALT", "KEY_F4"], "menu": "KEY_ESC", "pause": "KEY_ESC" }
+        }
+
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
 
-        romdir = "/userdata/roms/cdogs"
+        romdir = ROMS / "cdogs"
         assetdirs = [
             "music/briefing",
             "music/end",
@@ -214,7 +227,7 @@ class CdogsGenerator(Generator):
 
         try:
             for assetdir in assetdirs:
-                os.chdir(f"{romdir}/{assetdir}")
+                os.chdir(romdir / assetdir)
             os.chdir(romdir)
         except FileNotFoundError:
             eslog.error("ERROR: Game assets not installed. You can get them from the Batocera Content Downloader.")
@@ -225,5 +238,5 @@ class CdogsGenerator(Generator):
         return Command.Command(
             array=commandArray,
             env={
-                'SDL_GAMECONTROLLERCONFIG': controllersConfig.generateSdlGameControllerConfig(playersControllers)
+                'SDL_GAMECONTROLLERCONFIG': generate_sdl_game_controller_config(playersControllers)
             })

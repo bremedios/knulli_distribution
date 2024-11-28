@@ -47,11 +47,10 @@ case "$1" in
       else
         governor="performance"
       fi
+      save_governor "$governor"
     fi
 
     set_governor "$governor"
-    save_governor "$governor"
-
     ;;
 
   list)

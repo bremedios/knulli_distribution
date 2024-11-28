@@ -1,35 +1,40 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import Command
-import batoceraFiles # GLOBAL VARIABLES
-from generators.Generator import Generator
-import shutil
-import os
-from os import environ
-import configparser
-import controllersConfig
+import logging
 import subprocess
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING
 
-from utils.logger import get_logger
-eslog = get_logger(__name__)
+from ... import Command
+from ...batoceraPaths import CACHE, CONFIGS, SAVES, ensure_parents_and_open
+from ...controller import generate_sdl_game_controller_config
+from ...utils.configparser import CaseSensitiveRawConfigParser
+from ..Generator import Generator
+
+if TYPE_CHECKING:
+    from ...controller import ControllerMapping
+    from ...Emulator import Emulator
+
+eslog = logging.getLogger(__name__)
 
 class LemonadeGenerator(Generator):
 
     # Main entry of the module
     def generate(self, system, rom, playersControllers, metadata, guns, wheels, gameResolution):
-        LemonadeGenerator.writeLEMONADEConfig(batoceraFiles.CONF + "/lemonade-emu/qt-config.ini", system, playersControllers)
+        LemonadeGenerator.writeLEMONADEConfig(CONFIGS / "lemonade-emu" / "qt-config.ini", system, playersControllers)
 
-        if os.path.exists('/usr/bin/lemonade-qt'):
+        if Path('/usr/bin/lemonade-qt').exists():
             commandArray = ['/usr/bin/lemonade-qt', rom]
         else:
             commandArray = ['/usr/bin/lemonade', rom]
-        return Command.Command(array=commandArray, env={ 
-            "XDG_CONFIG_HOME":batoceraFiles.CONF,
-            "XDG_DATA_HOME":batoceraFiles.SAVES + "/3ds",
-            "XDG_CACHE_HOME":batoceraFiles.CACHE,
-            "XDG_RUNTIME_DIR":batoceraFiles.SAVES + "/3ds/lemonade-emu",
+        return Command.Command(array=commandArray, env={
+            "XDG_CONFIG_HOME":CONFIGS,
+            "XDG_DATA_HOME":SAVES / "3ds",
+            "XDG_CACHE_HOME":CACHE,
+            "XDG_RUNTIME_DIR":SAVES / "3ds" / "lemonade-emu",
             "QT_QPA_PLATFORM":"xcb",
-            "SDL_GAMECONTROLLERCONFIG": controllersConfig.generateSdlGameControllerConfig(playersControllers),
+            "SDL_GAMECONTROLLERCONFIG": generate_sdl_game_controller_config(playersControllers),
             "SDL_JOYSTICK_HIDAPI": "0"
             }
         )
@@ -40,9 +45,9 @@ class LemonadeGenerator(Generator):
             return False
         else:
             return True
-    
+
     @staticmethod
-    def writeLEMONADEConfig(lemonadeConfigFile, system, playersControllers):
+    def writeLEMONADEConfig(lemonadeConfigFile: Path, system: Emulator, playersControllers: ControllerMapping):
         # Pads
         lemonadeButtons = {
             "button_a":      "a",
@@ -68,9 +73,8 @@ class LemonadeGenerator(Generator):
         }
 
         # ini file
-        lemonadeConfig = configparser.RawConfigParser(strict=False)
-        lemonadeConfig.optionxform=str             # Add Case Sensitive comportement
-        if os.path.exists(lemonadeConfigFile):
+        lemonadeConfig = CaseSensitiveRawConfigParser(strict=False)
+        if lemonadeConfigFile.exists():
             lemonadeConfig.read(lemonadeConfigFile)
 
         ## [LAYOUT]
@@ -78,7 +82,7 @@ class LemonadeGenerator(Generator):
             lemonadeConfig.add_section("Layout")
         # Screen Layout
         lemonadeConfig.set("Layout", "custom_layout", "false")
-        lemonadeConfig.set("Layout", "custom_layout\default", "true")
+        lemonadeConfig.set("Layout", r"custom_layout\default", "true")
         if system.isOptSet('lemonade_screen_layout'):
             tab = system.config["lemonade_screen_layout"].split('-')
             lemonadeConfig.set("Layout", "swap_screen",   tab[1])
@@ -86,8 +90,8 @@ class LemonadeGenerator(Generator):
         else:
             lemonadeConfig.set("Layout", "swap_screen", "false")
             lemonadeConfig.set("Layout", "layout_option", "0")
-        lemonadeConfig.set("Layout", "swap_screen\default", "false")
-        lemonadeConfig.set("Layout", "layout_option\default", "false")
+        lemonadeConfig.set("Layout", r"swap_screen\default", "false")
+        lemonadeConfig.set("Layout", r"layout_option\default", "false")
 
         ## [SYSTEM]
         if not lemonadeConfig.has_section("System"):
@@ -97,44 +101,44 @@ class LemonadeGenerator(Generator):
             lemonadeConfig.set("System", "is_new_3ds", "true")
         else:
             lemonadeConfig.set("System", "is_new_3ds", "false")
-        lemonadeConfig.set("System", "is_new_3ds\default", "false")
+        lemonadeConfig.set("System", r"is_new_3ds\default", "false")
         # Language
         lemonadeConfig.set("System", "region_value", str(getLemonadeLangFromEnvironment()))
-        lemonadeConfig.set("System", "region_value\default", "false")
+        lemonadeConfig.set("System", r"region_value\default", "false")
 
         ## [UI]
         if not lemonadeConfig.has_section("UI"):
-            lemonadeConfig.add_section("UI")       
+            lemonadeConfig.add_section("UI")
         # Start Fullscreen
         lemonadeConfig.set("UI", "fullscreen", "true")
-        lemonadeConfig.set("UI", "fullscreen\default", "false")
+        lemonadeConfig.set("UI", r"fullscreen\default", "false")
 
         # Batocera - Defaults
         lemonadeConfig.set("UI", "displayTitleBars", "false")
         lemonadeConfig.set("UI", "displaytitlebars", "false") # Emulator Bug
-        lemonadeConfig.set("UI", "displayTitleBars\default", "false")
+        lemonadeConfig.set("UI", r"displayTitleBars\default", "false")
         lemonadeConfig.set("UI", "firstStart", "false")
-        lemonadeConfig.set("UI", "firstStart\default", "false")
+        lemonadeConfig.set("UI", r"firstStart\default", "false")
         lemonadeConfig.set("UI", "hideInactiveMouse", "true")
-        lemonadeConfig.set("UI", "hideInactiveMouse\default", "false")
+        lemonadeConfig.set("UI", r"hideInactiveMouse\default", "false")
         lemonadeConfig.set("UI", "enable_discord_presence", "false")
-        lemonadeConfig.set("UI", "enable_discord_presence\default", "false")
+        lemonadeConfig.set("UI", r"enable_discord_presence\default", "false")
 
         # Remove pop-up prompt on start
         lemonadeConfig.set("UI", "calloutFlags", "1")
-        lemonadeConfig.set("UI", "calloutFlags\default", "false")
+        lemonadeConfig.set("UI", r"calloutFlags\default", "false")
         # Close without confirmation
         lemonadeConfig.set("UI", "confirmClose", "false")
         lemonadeConfig.set("UI", "confirmclose", "false") # Emulator Bug
-        lemonadeConfig.set("UI", "confirmClose\default", "false")
+        lemonadeConfig.set("UI", r"confirmClose\default", "false")
 
         # screenshots
-        lemonadeConfig.set("UI", "Paths\screenshotPath", "/userdata/screenshots")
-        lemonadeConfig.set("UI", "Paths\screenshotPath\default", "false")
+        lemonadeConfig.set("UI", r"Paths\screenshotPath", "/userdata/screenshots")
+        lemonadeConfig.set("UI", r"Paths\screenshotPath\default", "false")
 
         # don't check updates
-        lemonadeConfig.set("UI", "Updater\check_for_update_on_start", "false")
-        lemonadeConfig.set("UI", "Updater\check_for_update_on_start\default", "false")
+        lemonadeConfig.set("UI", r"Updater\check_for_update_on_start", "false")
+        lemonadeConfig.set("UI", r"Updater\check_for_update_on_start\default", "false")
 
         ## [RENDERER]
         if not lemonadeConfig.has_section("Renderer"):
@@ -178,25 +182,25 @@ class LemonadeGenerator(Generator):
             lemonadeConfig.set("Renderer", "use_vsync_new", "false")
         else:
             lemonadeConfig.set("Renderer", "use_vsync_new", "true")
-        lemonadeConfig.set("Renderer", "use_vsync_new\default", "true")
+        lemonadeConfig.set("Renderer", r"use_vsync_new\default", "true")
         # Resolution Factor
         if system.isOptSet('lemonade_resolution_factor'):
             lemonadeConfig.set("Renderer", "resolution_factor", system.config["lemonade_resolution_factor"])
         else:
             lemonadeConfig.set("Renderer", "resolution_factor", "1")
-        lemonadeConfig.set("Renderer", "resolution_factor\default", "false")
+        lemonadeConfig.set("Renderer", r"resolution_factor\default", "false")
         # Async Shader Compilation
         if system.isOptSet('lemonade_async_shader_compilation') and system.config["lemonade_async_shader_compilation"] == '1':
             lemonadeConfig.set("Renderer", "async_shader_compilation", "true")
         else:
             lemonadeConfig.set("Renderer", "async_shader_compilation", "false")
-        lemonadeConfig.set("Renderer", "async_shader_compilation\default", "false")
+        lemonadeConfig.set("Renderer", r"async_shader_compilation\default", "false")
         # Use Frame Limit
         if system.isOptSet('lemonade_use_frame_limit') and system.config["lemonade_use_frame_limit"] == '0':
             lemonadeConfig.set("Renderer", "use_frame_limit", "false")
         else:
             lemonadeConfig.set("Renderer", "use_frame_limit", "true")
-        
+
         ## [WEB SERVICE]
         if not lemonadeConfig.has_section("WebService"):
             lemonadeConfig.add_section("WebService")
@@ -210,7 +214,7 @@ class LemonadeGenerator(Generator):
             lemonadeConfig.set("Utility", "use_disk_shader_cache", "true")
         else:
             lemonadeConfig.set("Utility", "use_disk_shader_cache", "false")
-        lemonadeConfig.set("Utility", "use_disk_shader_cache\default", "false")
+        lemonadeConfig.set("Utility", r"use_disk_shader_cache\default", "false")
         # Custom Textures
         if system.isOptSet('lemonade_custom_textures') and system.config["lemonade_custom_textures"] != '0':
             tab = system.config["lemonade_custom_textures"].split('-')
@@ -234,16 +238,16 @@ class LemonadeGenerator(Generator):
 
         # Options required to load the functions when the configuration file is created
         if not lemonadeConfig.has_option("Controls", "profiles\\size"):
-            lemonadeConfig.set("Controls", "profile", 0)
-            lemonadeConfig.set("Controls", "profile\\default", "true")    
+            lemonadeConfig.set("Controls", "profile", "0")
+            lemonadeConfig.set("Controls", "profile\\default", "true")
             lemonadeConfig.set("Controls", "profiles\\1\\name", "default")
             lemonadeConfig.set("Controls", "profiles\\1\\name\\default", "true")
-            lemonadeConfig.set("Controls", "profiles\\size", 1)
+            lemonadeConfig.set("Controls", "profiles\\size", "1")
 
         for index in playersControllers :
             controller = playersControllers[index]
             # We only care about player 1
-            if controller.player != "1":
+            if controller.player_number != 1:
                 continue
             for x in lemonadeButtons:
                 lemonadeConfig.set("Controls", "profiles\\1\\" + x, f'"{LemonadeGenerator.setButton(lemonadeButtons[x], controller.guid, controller.inputs)}"')
@@ -252,9 +256,7 @@ class LemonadeGenerator(Generator):
             break
 
         ## Update the configuration file
-        if not os.path.exists(os.path.dirname(lemonadeConfigFile)):
-            os.makedirs(os.path.dirname(lemonadeConfigFile))
-        with open(lemonadeConfigFile, 'w') as configfile:
+        with ensure_parents_and_open(lemonadeConfigFile, 'w') as configfile:
             lemonadeConfig.write(configfile)
 
     @staticmethod

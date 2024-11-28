@@ -1,13 +1,12 @@
-#!/usr/bin/env python
-
-from .logger import get_logger
+import logging
 import subprocess
 
-eslog = get_logger(__name__)
+eslog = logging.getLogger(__name__)
 
 class batoceraServices:
 
-    def isServiceEnabled(name):
+    @staticmethod
+    def isServiceEnabled(name: str):
         proc = subprocess.Popen(["batocera-services list"], stdout=subprocess.PIPE, shell=True)
         (out, err) = proc.communicate()
         for valmod in out.decode().splitlines():
@@ -18,7 +17,8 @@ class batoceraServices:
         eslog.debug(f"service {name} is disabled")
         return False
 
-    def getServiceStatus(name):
+    @staticmethod
+    def getServiceStatus(name: str):
         proc = subprocess.Popen(["batocera-services status \"" + name + "\""], stdout=subprocess.PIPE, shell=True)
         (out, err) = proc.communicate()
         val = out.decode().strip()

@@ -1,32 +1,33 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-import sys
-import os
-import io
-import batoceraFiles
-import settings
-from Emulator import Emulator
-import configparser
+from typing import TYPE_CHECKING
 
-def writeIniFile(system, rom, playersControllers, gameResolution):
-    iniConfig = configparser.ConfigParser(interpolation=None)
-    # To prevent ConfigParser from converting to lower case
-    iniConfig.optionxform = str
-    if os.path.exists(batoceraFiles.xemuConfig):
+from ...batoceraPaths import ensure_parents_and_open
+from ...utils.configparser import CaseSensitiveConfigParser
+from .xemuPaths import XEMU_CONFIG
+
+if TYPE_CHECKING:
+    from ...controller import ControllerMapping
+    from ...Emulator import Emulator
+    from ...types import Resolution
+
+
+def writeIniFile(system: Emulator, rom: str, playersControllers: ControllerMapping, gameResolution: Resolution) -> None:
+    iniConfig = CaseSensitiveConfigParser(interpolation=None)
+
+    if XEMU_CONFIG.exists():
         try:
-            with io.open(batoceraFiles.xemuConfig, 'r', encoding='utf_8_sig') as fp:
+            with XEMU_CONFIG.open(encoding='utf_8_sig') as fp:
                 iniConfig.readfp(fp)
         except:
             pass
 
     createXemuConfig(iniConfig, system, rom, playersControllers, gameResolution)
     # save the ini file
-    if not os.path.exists(os.path.dirname(batoceraFiles.xemuConfig)):
-        os.makedirs(os.path.dirname(batoceraFiles.xemuConfig))
-    with open(batoceraFiles.xemuConfig, 'w') as configfile:
+    with ensure_parents_and_open(XEMU_CONFIG, 'w') as configfile:
         iniConfig.write(configfile)
 
-def createXemuConfig(iniConfig, system, rom, playersControllers, gameResolution):
+def createXemuConfig(iniConfig: CaseSensitiveConfigParser, system: Emulator, rom: str, playersControllers: ControllerMapping, gameResolution: Resolution) -> None:
     # Create INI sections
     if not iniConfig.has_section("general"):
         iniConfig.add_section("general")
@@ -48,7 +49,7 @@ def createXemuConfig(iniConfig, system, rom, playersControllers, gameResolution)
         iniConfig.add_section("net")
     if not iniConfig.has_section("net.udp"):
         iniConfig.add_section("net.udp")
-        
+
 
     # Boot Animation Skip
     if system.isOptSet("xemu_bootanim"):
@@ -67,7 +68,7 @@ def createXemuConfig(iniConfig, system, rom, playersControllers, gameResolution)
         iniConfig.set("sys", "mem_limit", '"' + system.config["xemu_memory"] + '"')
     else:
         iniConfig.set("sys", "mem_limit", '"64"')
-    
+
     if system.name == "chihiro":
         iniConfig.set("sys", "mem_limit", '"128"')
         iniConfig.set("sys.files", "flashrom_path", '"/userdata/bios/cerbios.bin"')
@@ -101,7 +102,7 @@ def createXemuConfig(iniConfig, system, rom, playersControllers, gameResolution)
     # Vsync
     if system.isOptSet("xemu_vsync"):
         iniConfig.set("display.window", "vsync", system.config["xemu_vsync"])
-    else:      
+    else:
         iniConfig.set("display.window", "vsync", "true")
 
     # don't show the menubar
