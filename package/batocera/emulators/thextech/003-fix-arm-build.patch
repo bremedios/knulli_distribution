@@ -1,8 +1,6 @@
-diff --git a/3rdparty/AudioCodecs/libopus/CMakeLists.txt b/3rdparty/AudioCodecs/libopus/CMakeLists.txt
-index c249d79..281a1fb 100644
---- a/3rdparty/AudioCodecs/libopus/CMakeLists.txt
-+++ b/3rdparty/AudioCodecs/libopus/CMakeLists.txt
-@@ -575,7 +575,7 @@ elseif(OPUS_ARM_ARCHITECTURE)
+--- a/3rdparty/AudioCodecs/libopus/CMakeLists.txt	2024-09-23 21:48:19.000000000 +0000
++++ b/3rdparty/AudioCodecs/libopus/CMakelists.txt	2024-11-28 18:37:59.631971613 +0000
+@@ -575,7 +575,7 @@
          celt/arm/arm_celt_map.c
      )
  

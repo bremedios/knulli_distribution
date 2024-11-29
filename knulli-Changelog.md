@@ -48,7 +48,6 @@
 
 ### CHANGED / IMPROVED
 - OS features
-    - changed default cpu governor to interactive
     - updated EmulationStation to the latest version, it's now maintained as separate fork
     - default EmulationStation screensaver is now slideshow
     - volume/brightness can be adjusted by holding down inputs

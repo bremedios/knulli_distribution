@@ -14,6 +14,7 @@ RUN dpkg --add-architecture i386 && \
 		mercurial \
 		texinfo \
 		zip \
+		pigz \
 		default-jre \
 		imagemagick \
 		subversion \
