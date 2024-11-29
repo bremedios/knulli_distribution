@@ -70,8 +70,27 @@ class evmapy(AbstractContextManager[None, None]):
         ]:
             if os.path.exists(keysfile) and not (os.path.isdir(self.rom) and keysfile == "{}.keys" .format (self.rom)): # "{}.keys" .format (rom) is forbidden for directories, it must be inside
                 eslog.debug(f"evmapy file to merge : {keysfile}")
-                filesToMerge.append(keysfile)
+           
+                # Check if the keysfile needs replacement based on number of joysticks
+                if (controller := self.controllers.get(1)) is not None:
+                    inputs = controller.inputs
 
+                    if 'joystick1up' in inputs and 'joystick2up' in inputs:
+                        replacement_file = keysfile + ".dualjoystick"
+                    elif 'joystick1up' in inputs and 'joystick2up' not in inputs:
+                        replacement_file = keysfile + ".singlejoystick"
+                    else:
+                        replacement_file = None
+
+                    # Replace the keysfile if replacement exists
+                    if replacement_file and os.path.exists(replacement_file):
+                        eslog.debug(f"Using replacement file: {replacement_file}")
+                        filesToMerge.append(replacement_file)
+                    else:
+                        filesToMerge.append(keysfile)
+                else:
+                    filesToMerge.append(keysfile)
+                    
         if len(filesToMerge) == 0:
             return None
         if len(filesToMerge) == 1:

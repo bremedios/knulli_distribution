@@ -97,9 +97,7 @@ handle_powermode() {
             ;;
         "balanced")
             # Handle governor
-            if check_governor "interactive"; then
-                set_governor "interactive"
-            elif check_governor "schedutil"; then
+            if check_governor "schedutil"; then
                 set_governor "schedutil"
             elif check_governor "ondemand"; then
                 set_governor "ondemand"
