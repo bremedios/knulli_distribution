@@ -1,0 +1,55 @@
+--- a/src/gensignkey.c	2024-04-25 14:30:00.000000000 +0000
++++ b/src/gensignkey.c	2024-12-02 16:42:06.768500930 +0000
+@@ -99,7 +99,6 @@
+ {
+ 	sign_key * key = NULL;
+ 	buffer *buf = NULL;
+-	char *fn_temp = NULL;
+ 	int ret = DROPBEAR_FAILURE;
+ 	bits = signkey_generate_get_bits(keytype, bits);
+ 
+@@ -149,31 +148,7 @@
+ 	key = NULL;
+ 	buf_setpos(buf, 0);
+ 
+-	fn_temp = m_malloc(strlen(filename) + 30);
+-	snprintf(fn_temp, strlen(filename)+30, "%s.tmp%d", filename, getpid());
+-	ret = buf_writefile(buf, fn_temp, 0);
+-
+-	if (ret == DROPBEAR_FAILURE) {
+-		goto out;
+-	}
+-
+-	if (link(fn_temp, filename) < 0) {
+-		/* If generating keys on connection (skipexist) it's OK to get EEXIST 
+-		- we probably just lost a race with another connection to generate the key */
+-		if (!(skip_exist && errno == EEXIST)) {
+-			if (errno == EPERM || errno == EACCES) {
+-				/* Non-atomic fallback when hard-links not allowed or unsupported */
+-				buf_setpos(buf, 0);
+-				ret = buf_writefile(buf, filename, skip_exist);
+-			} else {
+-				dropbear_log(LOG_ERR, "Failed moving key file to %s: %s", filename,
+-					strerror(errno));
+-				ret = DROPBEAR_FAILURE;
+-			}
+-
+-			goto out;
+-		}
+-	}
++	ret = buf_writefile(buf, filename, 0);
+ 
+ 	/* ensure directory update is flushed to disk, otherwise we can end up
+ 	with zero-byte hostkey files if the power goes off */
+@@ -184,10 +159,5 @@
+ 		buf_burn_free(buf);
+ 	}
+ 	
+-	if (fn_temp) {
+-		unlink(fn_temp);
+-		m_free(fn_temp);
+-	}
+-
+ 	return ret;
+ }
+

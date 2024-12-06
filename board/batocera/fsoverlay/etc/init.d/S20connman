@@ -95,7 +95,7 @@ wifi_disable() {
 }
 
 case "$1" in
-	start)
+    start)
         batocera_hostname
         wifi_configure_all
         printf "Starting connman: "
@@ -107,12 +107,13 @@ case "$1" in
             fi
             sleep 0.25
         done
+        sleep 0.5
 
-		if [ "$settingsWlan" = "1" ];then
+        if [ "$settingsWlan" = "1" ];then
             # Detach the wifi enable process
             wifi_enable &
         else
-		    wifi_disable
+            wifi_disable
         fi
 
         echo "done."

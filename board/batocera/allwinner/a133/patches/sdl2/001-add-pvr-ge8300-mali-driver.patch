@@ -1181,8 +1181,8 @@ ctalon@hyperion:/opt/ddata/merge/distribution/output/h700/build/sdl2-2.30.6/src/
  #ifdef SDL_VIDEO_DRIVER_DIRECTFB
      &DirectFB_bootstrap,
  #endif
---- a/src/video/mali-fbdev/SDL_malivideo.c	2024-11-26 19:31:38.507637982 +0000
-+++ b/src/video/mali-fbdev/SDL_malivideo.c	2024-11-26 05:07:33.302726885 +0000
+--- a/src/video/mali-fbdev/SDL_malivideo.c	2024-12-04 17:56:07.468420608 +0000
++++ b/src/video/mali-fbdev/SDL_malivideo.c	2024-12-04 17:55:08.840547408 +0000
 @@ -184,6 +184,8 @@
  {
      SDL_WindowData *windowdata;
@@ -1192,12 +1192,18 @@ ctalon@hyperion:/opt/ddata/merge/distribution/output/h700/build/sdl2-2.30.6/src/
  
      displaydata = SDL_GetDisplayDriverData(0);
  
-@@ -198,8 +200,32 @@
-     window->w = displaydata->native_display.width;
-     window->h = displaydata->native_display.height;
- #else
+@@ -193,14 +195,31 @@
+         return SDL_OutOfMemory();
+     }
+ 
+-#ifndef SDL2_POWERVR_GE8300
+-    /* Windows have one size for now */
+-    window->w = displaydata->native_display.width;
+-    window->h = displaydata->native_display.height;
+-#else
 -    window->w = 1024;
 -    window->h = 768;
+-#endif
 +    /* Read framebuffer dimensions from /sys/class/graphics/fb0/modes */
 +    fb_modes_file = fopen("/sys/class/graphics/fb0/modes", "r");
 +    if (fb_modes_file) {
@@ -1223,7 +1229,6 @@ ctalon@hyperion:/opt/ddata/merge/distribution/output/h700/build/sdl2-2.30.6/src/
 +    /* Set window size based on framebuffer dimensions */
 +    window->w = fb_width;
 +    window->h = fb_height;
-+
- #endif
  
      /* OpenGL ES is the law here */
+     window->flags |= SDL_WINDOW_OPENGL;

@@ -5,7 +5,7 @@ LOCK="/var/run/battery-saver.lock"
 exec 200>"$LOCK"
 flock -n 200 || exit 1
 
-trap 'restore_brightness; rm -f "$LOCK"; exit 0' SIGTERM
+trap 'cleanup' SIGTERM
 
 STATE="active"
 BRIGHTNESS="$(batocera-brightness)"
@@ -25,10 +25,22 @@ if [[ -z "$TIMER" || ! "$TIMER" =~ ^[0-9]+$ || "$TIMER" -lt 60 ]]; then
 fi
 
 # Called with SIGTERM so brightness is restored before saving to batocera.conf when shutting down and display is dimmed
-restore_brightness() {
+cleanup() {
     if [ "$STATE" = "inactive" ]; then
-        batocera-brightness $BRIGHTNESS
+        batocera-brightness "$BRIGHTNESS"
     fi
+
+    local pids
+    pids=$(pgrep -P $$)
+    if [ -n "$pids" ]; then
+        kill -TERM $pids 2>/dev/null || true
+    fi
+
+    # Kill any lingering processes
+    pkill -f "jstest --event" 2>/dev/null || true
+
+    rm -f "$LOCK"
+    exit 0
 }
 
 js_update() {
@@ -119,4 +131,5 @@ monitor_controllers() {
 js_update
 monitor_controllers
 
+rm -f "$LOCK"
 exit 0
