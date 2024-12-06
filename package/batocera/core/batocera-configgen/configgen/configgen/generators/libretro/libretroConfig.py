@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import json
 import logging
 import subprocess
@@ -210,8 +211,13 @@ def createLibretroConfig(generator: Generator, system: Emulator, controllers: Co
         retroarchConfig['vrr_runloop_enable'] = 'false'
 
     # required at least for vulkan (to get the correct resolution)
-    retroarchConfig['video_fullscreen_x'] = gameResolution["width"]
-    retroarchConfig['video_fullscreen_y'] = gameResolution["height"]
+    # For rotated screens like the rg28xx
+    if gameResolution["width"] < gameResolution["height"]:
+        retroarchConfig['video_fullscreen_x'] = gameResolution["height"]
+        retroarchConfig['video_fullscreen_y'] = gameResolution["width"]
+    else:
+        retroarchConfig['video_fullscreen_x'] = gameResolution["width"]
+        retroarchConfig['video_fullscreen_y'] = gameResolution["height"]
 
     retroarchConfig['video_black_frame_insertion'] = 'false'    # don't use anymore this value while it doesn't allow the shaders to work
     retroarchConfig['pause_nonactive'] = 'false'                # required at least on x86 x86_64 otherwise, the game is paused at launch
@@ -587,6 +593,82 @@ def createLibretroConfig(generator: Generator, system: Emulator, controllers: Co
             if (pad.guid in valid_n64_controller_guids and pad.name in valid_n64_controller_names) or (system.isOptSet(f'{option}-controller{i}') and system.config[f'{option}-controller{i}'] != 'retropad'):
                 update_n64_controller_config(i)
 
+    ## TATE mode remap for handhelds
+    if system.config['core'] in ['fbneo', 'mame', 'mame078plus']:
+        
+        def is_hdmi_active():
+            state = "/sys/devices/platform/soc/6000000.hdmi/extcon/hdmi/state"
+            if not os.path.exists(state):
+                return False
+            with open(state, 'r') as file:
+                state = file.read().strip()
+                if state == "HDMI=1":
+                    return True
+                else:
+                    return False
+        
+        def check_vertical(path, rom):
+            rom_id = os.path.splitext(os.path.basename(rom))[0]
+            tree = ET.parse(path)
+            root = tree.getroot()
+            rom_element = root.find(f".//rom[@id='{rom_id}']")
+            if rom_element is not None and rom_element.get('vert') == 'true':
+                return True
+            else:
+                return False
+        
+        def update_handheld_config(name):
+            if name in handhelds:
+                settings = handhelds[name]
+                # set display rotation
+                if settings['rotation'] == 'left':
+                    retroarchConfig['video_rotation'] = '1'
+                elif settings['rotation'] == 'right':
+                    retroarchConfig['video_rotation'] = '3'
+                # remap inputs
+                for btn, value in settings['remap'].items():
+                    retroarchConfig[f'input_player1_{btn}'] = value
+        
+        common_remap = {
+            'stk_r_x+': '18', 'stk_r_x-': '19', 'stk_r_y+': '17', 'stk_r_y-': '16',
+            'btn_down': '6', 'btn_left': '4', 'btn_right': '5', 'btn_up': '7',
+            'btn_a': '0', 'btn_b': '1', 'btn_x': '8', 'btn_y': '-1'
+        }
+        
+        handhelds = {
+            'Anbernic RG35XX-PLUS Controller': {  # rg35xx-plus
+                'rotation': 'left', 'remap': common_remap
+            },
+            'Anbernic RG35XX-H Controller': {  # rg35xx-h
+                'rotation': 'left', 'remap': common_remap
+            },
+            'Anbernic RG40XX-H Controller': {  # rg40xx-h
+                'rotation': 'left', 'remap': common_remap
+            },
+            'Anbernic RG28XX Controller': {  # rg28xx
+                'rotation': 'right',
+                'remap': {
+                    'btn_down': '7', 'btn_left': '5', 'btn_right': '4', 'btn_up': '6',
+                    'btn_start': '0', 'btn_select': '8', 'btn_l2': '1', 'btn_r': '2',
+                    'btn_r2': '3', 'btn_a': '-1', 'btn_b': '-1', 'btn_x': '-1', 'btn_y': '-1',
+                }
+            },
+            'TRIMUI Player1': {  # trimui-smartpro
+                'rotation': 'left', 'remap': common_remap
+            },
+        }
+        
+        if system.isOptSet(f"{systemCore}-hhtate") and system.config[f"{systemCore}-hhtate"] == "True":
+            db_path = "/usr/share/emulationstation/resources/arcaderoms.xml"
+            controller, pad = sorted(controllers.items())[0]
+            if check_vertical(db_path, rom) and not is_hdmi_active():
+                update_handheld_config(pad.name)
+                bezel = None
+            else:
+                retroarchConfig['video_rotation'] = '0'
+        else:
+            retroarchConfig['video_rotation'] = '0'
+            
     ## PORTS
     ## Quake
     if (system.config['core'] == 'tyrquake'):

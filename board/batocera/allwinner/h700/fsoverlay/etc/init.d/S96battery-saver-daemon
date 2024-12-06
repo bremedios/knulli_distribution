@@ -33,7 +33,7 @@ case "$1" in
         ;;
     restart)
         stop_daemon
-        sleep 1
+        sleep 2 # Allow plenty of time for battery-saver to cleanup
         start_daemon
         ;;
     *)
