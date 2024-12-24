@@ -1,0 +1,80 @@
+#!/bin/bash
+
+BOARD=$(cat /boot/boot/batocera.board)
+if [ "$BOARD" != "rg35xx-sp" ]; then
+    exit 1
+fi
+
+LOCK_FILE="/var/run/lid-suspend-script.lock"
+
+exec 200>"${LOCK_FILE}"
+if ! flock -n 200; then
+    exit 1
+fi
+
+trap 'flock -u 200;' EXIT
+
+HDMI_STATE_FILE="/sys/devices/platform/soc/6000000.hdmi/extcon/hdmi/state"
+FLAG_FILE="/var/run/lcd_off.flag"
+
+# Sets a default if not already set
+MODE="$(/usr/bin/batocera-settings-get system.lid)"
+if [[ -z "$MODE" || ! "$MODE" =~ ^(suspend|shutdown|dispoff)$ ]]; then
+    MODE="suspend" # default can be suspend|shutdown|dispoff
+    /usr/bin/batocera-settings-set system.lid "$MODE"
+fi
+
+display_off() {
+    batocera-brightness dispoff
+    batocera-audio setSystemVolume mute
+}
+
+suspend_system() {
+    pm-is-supported --suspend && pm-suspend
+    sleep 2
+}
+
+shutdown_system() {
+    batocera-brightness dispoff
+    amixer set Master mute
+    batocera-es-swissknife --emukill
+    /usr/bin/poweroff.sh
+}
+
+do_open() {
+    if [ "$MODE" == "dispoff" ] || [ -f "$FLAG_FILE" ]; then
+        batocera-brightness dispon
+        batocera-audio setSystemVolume unmute
+        [ -f "$FLAG_FILE" ] && rm -f "$FLAG_FILE"
+    fi
+}
+
+
+do_close() {
+    if [ -f "$HDMI_STATE_FILE" ]; then
+        STATE=$(cat "$HDMI_STATE_FILE")
+        if [ "$STATE" = "HDMI=0" ]; then
+            if [ "$MODE" == "shutdown" ]; then
+                shutdown_system
+            elif [ "$MODE" == "suspend" ]; then
+                suspend_system
+            elif [ "$MODE" == "dispoff" ]; then
+                display_off
+            fi
+        else
+            batocera-brightness dispoff
+            touch "$FLAG_FILE" # So we know if display is off for special case
+        fi
+    fi
+}
+
+case "$1" in
+    open)
+        do_open
+        ;;
+    close)
+        do_close
+        ;;
+esac
+
+exit 0

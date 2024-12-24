@@ -44,22 +44,22 @@ BRIGHTNESS=0
 # Before a mode can be set, it must be translated
 # from a daemon/Anbernic mode to a TrimUI LED mode.
 setMode() {
-  
+
   if [ $1 -eq $DAEMON_MODE_OFF ]; then
     MODE=$LED_MODE_OFF
   elif [ $1 -eq $DAEMON_MODE_STATIC ]; then
     MODE=$LED_MODE_STATIC # TODO: Check if this is the correct mode?
   elif [ $1 -eq $DAEMON_MODE_BREATHING_FAST ]; then
     echo "Daemon mode 2 (Breath (fast)) is not supported, yet. Using Breath (medium) instead"
-    MODE=$LED_MODE_BREATH # TODO: Is it possible to modify breath speed?
+    MODE=$LED_MODE_SNIFF # TODO: Is it possible to modify breath speed?
   elif [ $1 -eq $DAEMON_MODE_BREATHING_MEDIUM ]; then
     MODE=$LED_MODE_BREATH # TODO: Is it possible to modify breath speed?
   elif [ $1 -eq $DAEMON_MODE_BREATHING_SLOW ]; then
-    echo "Daemon mode 2 (Breath (slow)) is not supported, yet. Using Breath (slow) instead"
-    MODE=$LED_MODE_BREATH # TODO: Is it possible to modify breath speed?
+    echo "Daemon mode 4 (Breath (slow)) is not supported, yet. Using Breath (slow) instead"
+    MODE=$LED_MODE_LINEAR # TODO: Is it possible to modify breath speed?
   elif [ $1 -eq $DAEMON_MODE_SINGLE_RAINBOW ]; then
     # TODO: Figure out a way to manually run rainbow mode
-    MODE=$LED_MODE_LINEAR # TODO: Verify if linear mode is similar to rainbow mode (cycling through colors randomly)
+    MODE=$LED_MODE_STATIC # TODO: Verify if linear mode is similar to rainbow mode (cycling through colors randomly)
   elif [ $1 -eq $DAEMON_MODE_MULTI_RAINBOW ]; then
     # TODO: Figure out a way to manually run multi rainbow mode
     echo "Daemon mode 6 (Multi Rainbow) is not supported, yet. Using Static instead."
@@ -72,14 +72,18 @@ setMode() {
 setBrightness() {
 
   BRIGHTNESS_DEC=$1
+  echo BRIGHTNESS_DEC $BRIGHTNESS_DEC
   
   # The TSP has an integer range of 0-60
   # So we need to do some math first:
   # Divide by 255 and mulitply by 60
   BRIGHTNESS_TSP_FLOAT=$(echo "scale=2; $BRIGHTNESS_DEC/255*$MAX_INTEGER" | bc)
 
+  echo BRIGHTNESS_TSP_FLOAT $BRIGHTNESS_TSP_FLOAT
+
   # Round it to get applicable brightness
   BRIGHTNESS="$(printf '%.0f' ${BRIGHTNESS_TSP_FLOAT})"
+  echo BRIGHTNESS $BRIGHTNESS
 
 }
 
@@ -155,27 +159,29 @@ startEffect() {
   echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_lr
   echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_m
   # only the Brick has f1/f2
-  if [ -f "/sys/class/led_anim/effect_rgb_hex_f1" ] && [ -f "/sys/class/led_anim/effect_rgb_hex_f2" ];then # TODO: replace with boardcheck if possible!
+  if [ -e "/sys/class/led_anim/effect_rgb_hex_f1" ] && [ -e "/sys/class/led_anim/effect_rgb_hex_f2" ];then # TODO: replace with boardcheck if possible!
     echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_f1
     echo "$COLOR " > /sys/class/led_anim/effect_rgb_hex_f2
   fi
-  
+
   # set cycles of next effect to infinite loop (-1)
   echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_lr
   echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_m
   # only the Brick has f1/f2
-  if [ -f "/sys/class/led_anim/effect_cycles_f1" ] && [ -f "/sys/class/led_anim/effect_cycles_f2" ];then # TODO: replace with boardcheck if possible!
+  if [ -e "/sys/class/led_anim/effect_cycles_f1" ] && [ -e "/sys/class/led_anim/effect_cycles_f2" ];then # TODO: replace with boardcheck if possible!
     echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_f1
     echo $EFFECT_CYCLES_INFINITE_LOOP > /sys/class/led_anim/effect_cycles_f2
   fi
+
+  echo MODE $MODE
 
   #set mode of next effect
   echo $MODE > /sys/class/led_anim/effect_m
   echo $MODE > /sys/class/led_anim/effect_lr
   # only the Brick has f1/f2
-  if [ -f "/sys/class/led_anim/effect_f1" ] && [ -f "/sys/class/led_anim/effect_f2" ];then # TODO: replace with boardcheck if possible!
-    echo "$MODE " > /sys/class/led_anim/effect_f1
-    echo "$MODE " > /sys/class/led_anim/effect_f2
+  if [ -e "/sys/class/led_anim/effect_f1" ] && [ -e "/sys/class/led_anim/effect_f2" ];then # TODO: replace with boardcheck if possible!
+    echo $MODE > /sys/class/led_anim/effect_f1
+    echo $MODE > /sys/class/led_anim/effect_f2
   fi
 
   # start next effect
@@ -215,7 +221,7 @@ setRGBBasedMode() {
   # If mode is not between 1-4 or brightness is not between
   # 0 and 100 or any RGB color is not between 0 and 255,
   # print instructions and quit.
-  if [ $1 -gt 4 ] || [ $2 -lt 0 ] || [ $2 -gt 100 ] || [ $3 -lt 0 ] || [ $3 -gt 255 ] || [ $4 -lt 0 ] || [ $4 -gt 255 ] || [ $5 -lt 0 ] || [ $5 -gt 255 ]; then
+  if [ $1 -gt 4 ] || [ $2 -lt 0 ] || [ $2 -gt 255 ] || [ $3 -lt 0 ] || [ $3 -gt 255 ] || [ $4 -lt 0 ] || [ $4 -gt 255 ] || [ $5 -lt 0 ] || [ $5 -gt 255 ]; then
     printInstructions
     exit 1
   fi
@@ -244,6 +250,8 @@ setSpeedBasedMode() {
   echo "Speed-based modes (single rainbow, multi rainbow) are not supported, yet."
 
 }
+
+echo "Your call: $0 $1 $2 $3 $4 $5"
 
 # Disable LED and exit if at least one argument (mode) is given and mode is 0
 if [ $# -gt 0 ] && [ $1 -eq $DAEMON_MODE_OFF ]; then

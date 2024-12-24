@@ -21,9 +21,7 @@ suspend_system() {
 }
 
 shutdown_system() {
-    echo disable > /sys/kernel/debug/dispdbg/command
-    echo lcd0 > /sys/kernel/debug/dispdbg/name
-    echo 1 > /sys/kernel/debug/dispdbg/start
+    batocera-brightness dispoff
     amixer set Master mute
     batocera-es-swissknife --emukill
     /usr/bin/poweroff.sh

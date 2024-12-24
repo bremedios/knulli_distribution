@@ -3,7 +3,7 @@
 # uboot multiboard
 #
 ################################################################################
-ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_H6)$(BR2_PACKAGE_BATOCERA_TARGET_H616),y)
+ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_H6)$(BR2_PACKAGE_BATOCERA_TARGET_H616)$(BR2_PACKAGE_BATOCERA_TARGET_H700),y)
 UBOOT_MULTIBOARD_VERSION = 2024.01
 else
 UBOOT_MULTIBOARD_VERSION = 2023.01
@@ -50,6 +50,10 @@ else ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_H616),y)
 UBOOT_MULTIBOARD_MAKE_OPTS += BL31=$(BINARIES_DIR)/bl31.bin
 UBOOT_MULTIBOARD_MAKE_OPTS += SCP=/dev/null
 UBOOT_MULTIBOARD_SOC_DIR = common-h616
+else ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_H700),y)
+UBOOT_MULTIBOARD_MAKE_OPTS += BL31=$(BINARIES_DIR)/bl31.bin
+UBOOT_MULTIBOARD_MAKE_OPTS += SCP=/dev/null
+UBOOT_MULTIBOARD_SOC_DIR = common-h700
 else
 # Dummy SoC dir prevents adding common level patches twice
 # in case a new target SoC starts using this package and

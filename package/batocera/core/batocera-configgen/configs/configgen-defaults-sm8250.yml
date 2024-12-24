@@ -103,3 +103,6 @@ gp32:
 laser310:
   emulator: mame
   core:     mame
+cdi:
+  emulator: libretro
+  core:     same_cdi

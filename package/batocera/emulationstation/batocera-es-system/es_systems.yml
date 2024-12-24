@@ -2370,6 +2370,57 @@ fmtowns:
     tsugaru:
       tsugaru: { requireAnyOf: [BR2_PACKAGE_TSUGARU], incompatible_extensions: [chd, toc, nrg, gdi, cdr, mfi, dfi, hfe, mfm, td0, imd, 1dd, cqm, cqi, dsk, zip, 7z] }
 
+mpv:
+  name:       mpv
+  manufacturer: Tools
+  release:
+  hardware: tool
+  extensions:
+    - webm
+    - mkv
+    - flv
+    - f4v
+    - f4p
+    - f4a
+    - f4b
+    - vob
+    - ogv
+    - ogg
+    - gif
+    - gifv
+    - mng
+    - avi
+    - mov
+    - qt
+    - wmv
+    - yuv
+    - rm
+    - rmvb
+    - viv
+    - asf
+    - mp4
+    - m4v
+    - m4p
+    - mpg
+    - mp2
+    - mpeg
+    - mpe
+    - mpv
+    - m2v
+    - m4v
+    - svi
+    - 3gp
+    - 3g2
+    - mxf
+    - roq
+    - nsv
+  manufacturer: Misc. System
+  path: mpv
+  command: emulatorlauncher %CONTROLLERSCONFIG% -system %SYSTEM% -rom %ROM% -gameinfoxml %GAMEINFOXML% -systemname %SYSTEMNAME% -emulator mpv
+  emulators:
+    sh:
+      sh:  { requireAnyOf: [ BR2_PACKAGE_MPV ] }
+
 ports:
   name:       Ports
   manufacturer: Ports

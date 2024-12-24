@@ -1,4 +1,15 @@
 #!/bin/bash
+#######################################################
+#                                                     #
+#    ############################################     #
+#    ############################################     #
+#    ##                                           ##  #
+#    ##          Script by Mikhailzrick           ##  #
+#    ##                                           ##  #
+#    ############################################     #
+#    ############################################     #
+# v2.0                                                #
+#######################################################
 
 LOCK="/var/run/battery-saver.lock"
 
@@ -8,69 +19,151 @@ flock -n 200 || exit 1
 trap 'cleanup' SIGTERM
 
 STATE="active"
+STATE_FLAG="/var/run/activity_state.flag"
 BRIGHTNESS="$(batocera-brightness)"
-LOOP_COUNT=0 # This should always be 0
-JS_DEVICES=()
+GOVERNOR="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
 
-MODE="$(/usr/bin/batocera-settings-get system.batterysavermode)"
-if [[ -z "$MODE" || ! "$MODE" =~ ^(dim|suspend|shutdown)$ ]]; then
-    MODE="dim" # default can be dim|suspend|shutdown
-    /usr/bin/batocera-settings-set system.batterysavermode "$MODE"
-fi
-
-TIMER="$(/usr/bin/batocera-settings-get system.batterysavertimer)"
-if [[ -z "$TIMER" || ! "$TIMER" =~ ^[0-9]+$ || "$TIMER" -lt 60 ]]; then
-    TIMER="300" # default in seconds
-    /usr/bin/batocera-settings-set system.batterysavertimer "$TIMER"
-fi
-
-# Called with SIGTERM so brightness is restored before saving to batocera.conf when shutting down and display is dimmed
+# Called with SIGTERM
 cleanup() {
-    if [ "$STATE" = "inactive" ]; then
-        batocera-brightness "$BRIGHTNESS"
+    if [ "$STATE" = "inactive" ] && [ -n "$BRIGHTNESS" ]; then
+    batocera-brightness "$BRIGHTNESS"
+    batocera-audio setSystemVolume unmute
+    echo "1" > "$STATE_FLAG"
     fi
-
-    local pids
-    pids=$(pgrep -P $$)
-    if [ -n "$pids" ]; then
-        kill -TERM $pids 2>/dev/null || true
-    fi
-
-    # Kill any lingering processes
-    pkill -f "jstest --event" 2>/dev/null || true
 
     rm -f "$LOCK"
     exit 0
 }
 
-js_update() {
-    JS_DEVICES=()
-    for js_device in /dev/input/js*; do
-        if [ -e "$js_device" ]; then
-            JS_DEVICES+=("$js_device")
+initialize_settings() {
+    MODE="$(/usr/bin/batocera-settings-get system.batterysaver.mode)"
+    if [[ -z "$MODE" || ! "$MODE" =~ ^(dim|dispoff|suspend|shutdown|none)$ ]]; then
+        MODE="dim" # default can be dim|suspend|shutdown|none
+        /usr/bin/batocera-settings-set system.batterysaver.mode "$MODE"
+    fi
+
+    TIMER="$(/usr/bin/batocera-settings-get system.batterysaver.timer)"
+    if [[ -z "$TIMER" || ! "$TIMER" =~ ^[0-9]+$ || "$TIMER" -lt 60 ]]; then
+        TIMER="300" # default in seconds
+        /usr/bin/batocera-settings-set system.batterysaver.timer "$TIMER"
+    fi
+
+    EXTENDED_MODE="$(/usr/bin/batocera-settings-get system.batterysaver.extendedmode)"
+    if [[ -z "$EXTENDED_MODE" || ! "$EXTENDED_MODE" =~ ^(suspend|shutdown|none)$ ]]; then
+        EXTENDED_MODE="suspend" # default can be suspend|shutdown|none
+        /usr/bin/batocera-settings-set system.batterysaver.extendedmode "$EXTENDED_MODE"
+    fi
+
+    EXTENDED_TIMER="$(/usr/bin/batocera-settings-get system.batterysaver.extendedtimer)"
+    if [[ -z "$EXTENDED_TIMER" || ! "$EXTENDED_TIMER" =~ ^[0-9]+$ || "$EXTENDED_TIMER" -lt 60 ]]; then
+        EXTENDED_TIMER="900" # default in seconds. Only applicable if mode is dim or dispoff
+        /usr/bin/batocera-settings-set system.batterysaver.extendedtimer "$EXTENDED_TIMER"
+    fi
+
+    AGGRESSIVE="$(/usr/bin/batocera-settings-get system.batterysaver.aggressive)"
+    if [[ -z "$AGGRESSIVE" || ! "$AGGRESSIVE" =~ ^(1|0)$ ]]; then
+        AGGRESSIVE="0" # default
+        /usr/bin/batocera-settings-set system.batterysaver.aggressive "$AGGRESSIVE"
+    fi
+}
+
+animate_brightness() {
+    local current=$1
+    local target=$2
+    local duration=200  # Total animation duration in milliseconds
+    local min_steps=2   # Minimum number of steps
+    local max_steps=6   # Maximum number of steps
+
+    # Calculate the total distance
+    local distance=$((target - current))
+    local abs_distance=$((distance > 0 ? distance : -distance))
+
+    # Determine the number of steps
+    local steps=$((abs_distance > max_steps ? max_steps : abs_distance))
+    steps=$((steps < min_steps ? min_steps : steps))
+
+    # Make needed calculations
+    local step=$((distance / steps))
+    step=$((step == 0 ? (distance > 0 ? 1 : -1) : step))
+    local remainder=$((distance % steps))
+    local sleep_duration=$(awk "BEGIN {print $duration / ($steps * 1000)}")
+
+    local final_step=$((steps - 1))
+
+    for ((i = 0; i < steps; i++)); do
+        # Adjust current based on remainder and direction
+        if ((i == 0 && distance > 0)); then
+            # Apply remainder first if increasing brightness
+            current=$((current + step + remainder))
+        elif ((i == final_step && distance < 0)); then
+            # Apply remainder last if decreasing brightness
+            current=$((current + step + remainder))
+        else
+            current=$((current + step))
+        fi
+
+        # Prevent overshooting
+        if ((step > 0 && current > target)) || ((step < 0 && current < target)); then
+            current=$target
+        fi
+
+        # Apply brightness
+        batocera-brightness "$current"
+        sleep "$sleep_duration"
+
+        # Exit loop early if we hit the target
+        if [ "$current" -eq "$target" ]; then
+            break
         fi
     done
 }
 
 do_inactivity() {
     STATE="inactive"
+    echo "0" > "$STATE_FLAG"
     case "$MODE" in
         dim)
             BRIGHTNESS="$(batocera-brightness)"
-            if [ "$BRIGHTNESS" -gt 6 ]; then
-                batocera-brightness 6
+            if [ "$BRIGHTNESS" -gt 1 ]; then
+                animate_brightness "$BRIGHTNESS" 1
             fi
+
             batocera-audio setSystemVolume mute
+
+            if [ "$AGGRESSIVE" == "1" ]; then
+                GOVERNOR="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+                for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+                    echo "powersave" > "$cpu"
+                done
+            fi
+        ;;
+        dispoff)
+            batocera-audio setSystemVolume mute
+            batocera-brightness dispoff
         ;;
         suspend)
             pm-is-supported --suspend && pm-suspend
-            LOOP_COUNT=0
             STATE="active"
+            echo "1" > "$STATE_FLAG"
         ;;
         shutdown)
-            echo disable > /sys/kernel/debug/dispdbg/command
-            echo lcd0 > /sys/kernel/debug/dispdbg/name
-            echo 1 > /sys/kernel/debug/dispdbg/start
+            batocera-brightness dispoff
+            amixer set Master mute
+            batocera-es-swissknife --emukill
+            /usr/bin/poweroff.sh
+        ;;
+    esac
+}
+
+do_extended_inactivity() {
+    STATE=""
+    case "$EXTENDED_MODE" in
+        suspend)
+            pm-is-supported --suspend && pm-suspend
+            do_activity
+        ;;
+        shutdown)
+            batocera-brightness dispoff
             amixer set Master mute
             batocera-es-swissknife --emukill
             /usr/bin/poweroff.sh
@@ -79,56 +172,73 @@ do_inactivity() {
 }
 
 do_activity() {
+    STATE="active"
+    echo "1" > "$STATE_FLAG"
     if [ "$MODE" = "dim" ]; then
-        STATE="active"
-        batocera-brightness $BRIGHTNESS
+        if [ "$AGGRESSIVE" == "1" ] && [ -n "$GOVERNOR" ]; then
+            for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+                echo "$GOVERNOR" > "$cpu"
+            done
+        fi
+
+        batocera-audio setSystemVolume unmute
+
+        local CUR_BRIGHTNESS="$(batocera-brightness)"
+        if [ "$CUR_BRIGHTNESS" != "$BRIGHTNESS" ]; then
+            animate_brightness "$CUR_BRIGHTNESS" "$BRIGHTNESS"
+        fi
+    fi
+
+    if [ "$MODE" = "dispoff" ]; then
+        batocera-brightness dispon
         batocera-audio setSystemVolume unmute
     fi
 }
 
 monitor_controllers() {
-    local JS_REFRESH_INTERVAL=10 # Number of loops before controller refresh (by default 1 loop per second)
-
     while true; do
-        if (( LOOP_COUNT % JS_REFRESH_INTERVAL == 0 )); then
-            js_update
+        input_detected=false
+        local TIMEOUT=""
+
+        if [ "$STATE" = "inactive" ]; then
+            TIMEOUT="$EXTENDED_TIMER"
+        else
+            TIMEOUT="$TIMER"
         fi
 
-        # Wait a bit if no controllers are detected
-        if [ ${#JS_DEVICES[@]} -eq 0 ]; then
-            sleep 1
-            continue
+        # Use inotifywait with a variable timeout to determine system inactivity
+        event_data=$(timeout "$TIMEOUT" inotifywait -q -e create -e delete -e access --exclude '^.*\/$' "/dev/input/" 2>/dev/null)
+
+        if [[ -n "$event_data" ]]; then
+            # Parse event type. We only need "event".
+            read -r _ event _ <<< "$event_data"
+
+            case "$event" in
+                CREATE | DELETE)
+                    continue # Restart the loop so a new inotifywait is started for any controller changes that happened
+                    ;;
+                ACCESS)
+                    LOOP_COUNT=0
+                    input_detected=true
+                    if [ "$STATE" = "inactive" ]; then
+                        do_activity
+                    fi
+                    sleep 1 # Throttles to reduce cpu usage during frequent inputs especially with multiple controllers
+                    ;;
+            esac
         fi
 
-        for i in "${!JS_DEVICES[@]}"; do
-            js="${JS_DEVICES[$i]}"
-
-            if timeout 1 jstest --event "$js" 2>/dev/null | grep -Ev 'type 129|type 130' | grep -m 1 -q "Event"; then
-                LOOP_COUNT=0
-
-                # Check if detected input device is first and reorder if not
-                if [ "$i" -ne 0 ]; then
-                    JS_DEVICES=("$js" "${JS_DEVICES[@]:0:$i}" "${JS_DEVICES[@]:$((i + 1))}")
-                fi
-
-                if [ "$STATE" = "inactive" ]; then
-                    do_activity
-                fi
-
-                break # If input is detected don't need to continue looping through other devices
-            fi
-        done
-
-        ((LOOP_COUNT++))
-        if (( LOOP_COUNT >= TIMER )); then
+        if [ "$input_detected" = "false" ]; then
             if [ "$STATE" = "active" ]; then
                 do_inactivity
+            elif [ "$STATE" = "inactive" ]; then
+                do_extended_inactivity
             fi
         fi
     done
 }
 
-js_update
+initialize_settings
 monitor_controllers
 
 rm -f "$LOCK"

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from ... import Command
-from ...batoceraPaths import BIOS, HOME, ROMS, SCREENSHOTS, ensure_parents_and_open
+from ...batoceraPaths import BIOS, HOME, ROMS, SAVES, SCREENSHOTS, ensure_parents_and_open
 from ...controller import generate_sdl_game_controller_config
 from ..Generator import Generator
 
@@ -19,6 +19,7 @@ PICO8_BIN_PATH: Final = BIOS / "pico-8" / "pico8"
 PICO8_ROOT_PATH: Final = ROMS / "pico8"
 PICO8_CONTROLLERS: Final = HOME / ".lexaloffle" / "pico-8" / "sdl_controllers.txt"
 PICO8_CONFIG_PATH=HOME / ".lexaloffle" / "pico-8" / "config.txt"
+PICO8_SAVES_PATH: Final = SAVES / "pico8"
 VOX_BIN_PATH: Final = BIOS / "voxatron" / "vox"
 VOX_ROOT_PATH: Final = ROMS / "voxatron"
 VOX_CONTROLLERS: Final = HOME / ".lexaloffle" / "Voxatron" / "sdl_controllers.txt"
@@ -52,10 +53,10 @@ class LexaloffleGenerator(Generator):
         if not os.access(BIN_PATH, os.X_OK):
             eslog.error(f"File {BIN_PATH} is not set as executable")
             return -1
-        
+
         # Initialize dictionary
         config_settings = {}
-        
+
         # Set defaults
         config_settings["window_size"] = "0 0" # window width, height
         config_settings["screen_size"] = "0 0" # screen width, height (stretched to window)
@@ -97,17 +98,32 @@ class LexaloffleGenerator(Generator):
         config_settings["gfx_grid_lines"] = "0" # 0 off  > 1: colour to draw pixel grid in the gfx editor at zoom:8 and zoom:4 (16 for black)
         config_settings["capture_timestamps"] = "0" # 0 sequential (foo_0.png, foo_1.png)    1 timestamp (foo_20240115_120823.png)
 
+        # Display FPS
+        if system.isOptSet("pico8_showfps") and system.config['pico8_showfps'] == '1':
+            config_settings["show_fps"] = "1"
+        else:
+            config_settings["show_fps"] = "0"
+
+        # Filter mature games in splore
+        if system.isOptSet("pico_splorefilter") and system.config['pico_splorefilter'] == '1':
+            config_settings["splore_filter"] = "1"
+        else:
+            config_settings["splore_filter"] = "0"
+
+        # Number of milliseconds to sleep each frame. Try 10 to conserve battery power
+        if system.isOptSet("pico8_framesleep"):
+            config_settings["foreground_sleep_ms"] = system.config['pico8_framesleep']
+        else:
+            config_settings["foreground_sleep_ms"] = "1"
+
+        # Write config_settings to config.txt
+        self.write_config(config_settings)
+
         # The command to run
         commandArray = [BIN_PATH]
-        
+
         basename = os.path.basename(rom)
         rombase, romext = os.path.splitext(basename)
-
-        # Display FPS
-        if system.config['showFPS'] == 'true':
-                commandArray.extend(["-show_fps", "1"])
-        else:
-                commandArray.extend(["-show_fps", "0"])
 
         rombase = rom_path.stem
 
@@ -126,10 +142,12 @@ class LexaloffleGenerator(Generator):
         else:
             commandArray.extend(["-run", rom])
 
+        commandArray.extend(["-cdata_path", PICO8_SAVES_PATH])
+
         # Pixel perfect / integer scaling
         if system.isOptSet("pico8_pixelperfect") and system.config['pico8_pixelperfect'] == '1':
             commandArray.extend(["-pixel_perfect", "1"])
-        
+
         controllersdir = os.path.dirname(CONTROLLERS)
         if not os.path.exists(controllersdir):
                 os.makedirs(controllersdir)
@@ -146,6 +164,6 @@ class LexaloffleGenerator(Generator):
         with open(PICO8_CONFIG_PATH, "w") as config_file:
             for key, value in settings.items():
                 config_file.write(f"{key} {value}\n")
-    
+
     def getInGameRatio(self, config, gameResolution, rom):
         return 4/3

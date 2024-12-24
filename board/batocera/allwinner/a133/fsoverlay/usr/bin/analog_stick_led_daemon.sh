@@ -43,6 +43,9 @@ BATTERY_WARNING_MODE=2
 BATTERY_WARNING_COLOUR=(255 255 0)
 BATTERY_DANGER_COLOUR=(255 0 0)
 
+# Path to HDMI values
+HDMI_DIR="/sys/devices/platform/soc/6000000.hdmi/extcon/hdmi/state"
+
 # Paths to battery values
 BATTERY_DIR=$(ls -d /sys/class/power_supply/*{BAT,bat}* 2>/dev/null | head -1)
 KEY_BATTERY_CAPACITY="$BATTERY_DIR/capacity"
@@ -208,16 +211,23 @@ readBatteryValues() {
 updateAppliedBrightness() {
 
     # Retrieve LED brightness from batocera.conf
-	LED_BRIGHTNESS=$(batocera-settings-get $KEY_LED_BRIGHTNESS)
+    LED_BRIGHTNESS=$(batocera-settings-get $KEY_LED_BRIGHTNESS)
 
     # Determine current screen brightness:
     SCREEN_BRIGHTNESS_PERCENT=$(batocera-brightness)
 
     # Determine current HDMI state:
-    HDMI_STATE="$(cat /sys/devices/platform/soc/6000000.hdmi/extcon/hdmi/state)"
-
+    HDMI_STATE="none"
+    if [ ! -z $HDMI_DIR ] && [ -f $HDMI_DIR ]; then
+      HDMI_STATE="$(cat $HDMI_DIR)"
+    fi
+    
     # Calculate applied brightness based on screen brightness percentage of LED brightness.
     APPLIED_BRIGHTNESS=$(( ${LED_BRIGHTNESS}*${SCREEN_BRIGHTNESS_PERCENT}/100 ))
+    if [ $APPLIED_BRIGHTNESS -lt 50 ]; then
+      # Keep min. brightness of 50
+      APPLIED_BRIGHTNESS=50
+    fi
 
     # If currently plugged to HDMI or brightness calculation crapped out, let's just use the LED brightness at 100%.
     if [ "$HDMI_STATE" = "HDMI=1" ] || [ -z $APPLIED_BRIGHTNESS ]; then

@@ -3,6 +3,8 @@ config BR2_PACKAGE_POWERVR_GE8300_DRIVER
 	depends on BR2_aarch64
 	select BR2_PACKAGE_HAS_LIBEGL
 	select BR2_PACKAGE_HAS_LIBGLES
+        select BR2_PACKAGE_HAS_LIBOPENCL
+        select BR2_PACKAGE_HAS_LIBVULKAN
 	
 	help
 	  Install the binary user-space components for the PowerVR GE8300
@@ -15,6 +17,9 @@ config BR2_PACKAGE_PROVIDES_LIBEGL
 	default "powervr-ge8300-driver"
 
 config BR2_PACKAGE_PROVIDES_LIBGLES
+	default "powervr-ge8300-driver"
+
+config BR2_PACKAGE_PROVIDES_LIBOPENCL
 	default "powervr-ge8300-driver"
 
 endif

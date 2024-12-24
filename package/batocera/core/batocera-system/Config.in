@@ -131,6 +131,15 @@ config BR2_PACKAGE_BATOCERA_MUSIC_SUPPORT
 	help
 	  Music support packages (MIDI, MOD, S3M, XM, ....)
 
+config BR2_PACKAGE_KNULLI_POWERVR_GE8300_VULKAN
+	bool "knulli Vulkan support for PVR GE8300"
+        select BR2_PACKAGE_VULKAN_TOOLS
+        select BR2_PACKAGE_SPIRV_TOOLS
+        select BR2_PACKAGE_SHADERC
+
+        help
+          Vulkan support for PowerVR GE8300
+
 config BR2_PACKAGE_BATOCERA_VULKAN
 	bool "batocera.linux Vulkan support"
 
@@ -364,6 +373,8 @@ config BR2_PACKAGE_BATOCERA_SYSTEM
 						    BR2_PACKAGE_BATOCERA_TARGET_SM8250	|| \
 						    BR2_PACKAGE_BATOCERA_TARGET_RISCV
 
+	select BR2_PACKAGE_KNULLI_POWERVR_GE8300_VULKAN if BR2_PACKAGE_BATOCERA_TARGET_A133 
+
 	# wireless drivers
 	# use the morrownr RTL8812au & RTL8821au drivers
 	select BR2_PACKAGE_RTL8812AU		if !BR2_PACKAGE_BATOCERA_TARGET_BCM2835		&& \
@@ -532,7 +543,7 @@ config BR2_TARGET_BATOCERA_IMAGES_DEFINITIONS
 	default "allwinner/h5/tritium-h5 allwinner/h5/orangepi-pc2"					if BR2_PACKAGE_BATOCERA_TARGET_H5
 	default "allwinner/h6/orangepi-3-lts allwinner/h6/orangepi-3 allwinner/h6/orangepi-one-plus"	if BR2_PACKAGE_BATOCERA_TARGET_H6
 	default "allwinner/h616/orangepi-zero2 allwinner/h616/orangepi-zero3 allwinner/h616/x96-mate"	if BR2_PACKAGE_BATOCERA_TARGET_H616
-	default "allwinner/h700/rg35xx-sp allwinner/h700/rg35xx-plus allwinner/h700/rg35xx-h allwinner/h700/rg40xx-h allwinner/h700/rg40xx-v allwinner/h700/rg-cubexx allwinner/h700/rg28xx" \
+	default "allwinner/h700/rg35xx-sp allwinner/h700/rg35xx-plus allwinner/h700/rg35xx-h allwinner/h700/rg40xx-h allwinner/h700/rg40xx-v allwinner/h700/rg-cubexx allwinner/h700/rg28xx allwinner/h700/rg34xx" \
 													if BR2_PACKAGE_BATOCERA_TARGET_H700
 	default "allwinner/a133/trimui-smart-pro allwinner/a133/trimui-brick"				if BR2_PACKAGE_BATOCERA_TARGET_A133
 	default "allwinner/r16/miyoo-a30"								if BR2_PACKAGE_BATOCERA_TARGET_SUNXI_R16
@@ -552,6 +563,7 @@ config BR2_TARGET_BATOCERA_IMAGES_DEFINITIONS
 	default "rockchip/rk3399/orangepi-800 rockchip/rk3399/rg552 rockchip/rk3399/rockpro64 rockchip/rk3399/rock960 rockchip/rk3399/orangepi4-lts rockchip/rk3399/rock-pi-4 rockchip/rk3399/nanopi-m4v2 rockchip/rk3399/hugsun-x99" \
 													if BR2_PACKAGE_BATOCERA_TARGET_RK3399
 	default "rockchip/rk3566/powkiddy-rgb30 rockchip/rk3566/rg-arc-s"	 			if BR2_PACKAGE_BATOCERA_TARGET_RK3568
+#	default "rockchip/rk3566/powkiddy-x55"	 			if BR2_PACKAGE_BATOCERA_TARGET_RK3568
 	default "rockchip/rk3588/orangepi-5-pro rockchip/rk3588/bananapi-m7 rockchip/rk3588/gameforce-ace rockchip/rk3588/rock-5c rockchip/rk3588/rock-5b rockchip/rk3588/rock-5a rockchip/rk3588/quartzpro64 rockchip/rk3588/orangepi-5 rockchip/rk3588/orangepi-5b rockchip/rk3588/orangepi-5-plus rockchip/rk3588/indiedroid-nova rockchip/rk3588/mekotronics-r58 rockchip/rk3588/khadas-edge-2 rockchip/rk3588/firefly-station-m3" \
 													if BR2_PACKAGE_BATOCERA_TARGET_RK3588
 #	default "rockchip/rk3568/anbernic-rgxx3 rockchip/rk3568/odroid-m1s rockchip/rk3568/odroid-m1 rockchip/rk3568/rock-3a rockchip/rk3568/rock-3c rockchip/rk3568/firefly-station-m2 rockchip/rk3568/firefly-station-p2" \
@@ -841,6 +853,7 @@ config BR2_PACKAGE_BATOCERA_SEGADC
 						   BR2_PACKAGE_BATOCERA_TARGET_BCM2711	|| \
 						   BR2_PACKAGE_BATOCERA_TARGET_BCM2712	|| \
 						   BR2_PACKAGE_BATOCERA_TARGET_RK3326	|| \
+						   BR2_PACKAGE_BATOCERA_TARGET_RK3568	|| \
 						   BR2_PACKAGE_BATOCERA_TARGET_A133	|| \
 						   BR2_PACKAGE_BATOCERA_TARGET_H700	|| \
 						   BR2_PACKAGE_BATOCERA_TARGET_H3	|| \
@@ -909,7 +922,8 @@ config BR2_PACKAGE_BATOCERA_ARCADE_SYSTEMS
 							   !BR2_PACKAGE_BATOCERA_TARGET_RK3128	&& \
 							   !BR2_PACKAGE_BATOCERA_TARGET_ATM7039 && \
 							   !BR2_PACKAGE_BATOCERA_TARGET_SUNXI_R16
-	select BR2_PACKAGE_LIBRETRO_SAME_CDI		if BR2_PACKAGE_BATOCERA_TARGET_X86_ANY
+	select BR2_PACKAGE_LIBRETRO_SAME_CDI		if BR2_PACKAGE_BATOCERA_TARGET_X86_ANY || \
+							   BR2_aarch64
 
 	# Standalone MAME
 #	select BR2_PACKAGE_MAME		if BR2_x86_64 || ((BR2_arm || BR2_aarch64 || BR2_RISCV_64) && BR2_PACKAGE_BATOCERA_WAYLAND)
