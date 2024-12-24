@@ -1,17 +1,17 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-import sys
-import os
+from __future__ import annotations
+
 import configparser
-import batoceraFiles
-from utils.logger import get_logger
+import logging
+from typing import TYPE_CHECKING, Literal
 
-eslog = get_logger(__name__)
+from ...batoceraPaths import mkdir_if_not_exists
+from .flycastPaths import FLYCAST_MAPPING
 
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+if TYPE_CHECKING:
+    from ...controller import Controller
 
-import batoceraFiles
+eslog = logging.getLogger(__name__)
+
 
 flycastMapping = { # Directions
                    # The DPAD can be an axis (for gpio sticks for example) or a hat
@@ -33,9 +33,7 @@ flycastMapping = { # Directions
                    'l2' :            {'axis': 'axis_trigger_left', 'button': 'btn_trigger_left'},
                    'r2' :            {'axis': 'axis_trigger_right', 'button': 'btn_trigger_right'},
                    # System Buttons
-                   'start' :         {'button': 'btn_start'},
-                   # Menu
-                   'hotkey' :        {'button': 'btn_menu'}
+                   'start' :         {'button': 'btn_start'}
 }
 
 flycastArcadeMapping = { # Directions
@@ -62,34 +60,31 @@ flycastArcadeMapping = { # Directions
                          # System Buttons
                          'start' :         {'button': 'btn_start'},
                          # coin
-                         'select':         {'button': 'btn_d'},
-                         # Menu
-                         'hotkey' :        {'button': 'btn_menu'}
+                         'select':         {'button': 'btn_d'}
 }
 
 sections = { 'analog', 'digital', 'emulator' }
 
 # Create the controller configuration file
-def generateControllerConfig(controller, type):
+def generateControllerConfig(controller: Controller, type: Literal['dreamcast', 'arcade']):
     # Set config file name
     if type == 'dreamcast':
         eslog.debug("-=[ Dreamcast Controller Settings ]=-")
-        configFileName = "{}/SDL_{}.cfg".format(batoceraFiles.flycastMapping, controller.realName)
-    if type == 'arcade':
+        configFileName = FLYCAST_MAPPING / f"SDL_{controller.real_name}.cfg"
+    else: # 'arcade'
         eslog.debug("-=[ Arcade Controller Settings ]=-")
-        configFileName = "{}/SDL_{}_arcade.cfg".format(batoceraFiles.flycastMapping, controller.realName)
+        configFileName = FLYCAST_MAPPING / f"SDL_{controller.real_name}_arcade.cfg"
+
     Config = configparser.ConfigParser(interpolation=None)
 
-    if not os.path.exists(os.path.dirname(configFileName)):
-        os.makedirs(os.path.dirname(configFileName))
-         
-    cfgfile = open(configFileName,'w+')
+    mkdir_if_not_exists(configFileName.parent)
+
     # create ini sections
     for section in sections:
         Config.add_section(section)
 
     # Parse controller inputs
-    eslog.debug("*** Controller Name = {} ***".format(controller.realName))
+    eslog.debug("*** Controller Name = {} ***".format(controller.real_name))
     analogbind = 0
     digitalbind = 0
     for index in controller.inputs:
@@ -125,7 +120,7 @@ def generateControllerConfig(controller, type):
             digitalbind = digitalbind +1
             val = "{}:{}".format(code, var)
             Config.set(section, option, val)
-        
+
         if input.type == 'button':
             section = 'digital'
             option = "bind{}".format(digitalbind)
@@ -133,7 +128,7 @@ def generateControllerConfig(controller, type):
             code = input.id
             val = "{}:{}".format(code, var)
             Config.set(section, option, val)
-        
+
         if input.type == 'axis':
             section = 'analog'
             if input.name == 'l2' or input.name == 'r2':
@@ -186,9 +181,60 @@ def generateControllerConfig(controller, type):
 
         # Add additional controller info
         Config.set("emulator", "dead_zone", "10")
-        Config.set("emulator", "mapping_name", "Default") #controller.realName)
+        Config.set("emulator", "mapping_name", "Default") #controller.real_name)
         Config.set("emulator", "rumble_power", "100")
         Config.set("emulator", "version", "3")
-    
-    Config.write(cfgfile)
-    cfgfile.close()
+
+    with configFileName.open('w+') as cfgfile:
+        Config.write(cfgfile)
+
+def generateKeyboardConfig():
+    configFileName = FLYCAST_MAPPING / "SDL_Keyboard.cfg"
+
+    Config = configparser.ConfigParser(interpolation=None)
+
+    mkdir_if_not_exists(configFileName.parent)
+
+    # Add cfg sections
+    Config.add_section("digital")
+    Config.add_section("emulator")
+
+    # Define digital bindings for keyboard
+    keyboardBindings = {
+        "bind0": "4:btn_d",
+        "bind1": "6:btn_b",
+        "bind2": "7:btn_y",
+        "bind3": "9:btn_trigger_left",
+        "bind4": "12:btn_analog_up",
+        "bind5": "13:btn_analog_left",
+        "bind6": "14:btn_analog_down",
+        "bind7": "15:btn_analog_right",
+        "bind8": "22:btn_x",
+        "bind9": "25:btn_trigger_right",
+        "bind10": "27:btn_a",
+        "bind11": "40:btn_start",
+        "bind12": "43:btn_menu",
+        "bind13": "44:btn_fforward",
+        "bind14": "64:btn_escape",
+        "bind15": "65:btn_jump_state",
+        "bind16": "66:btn_quick_save",
+        "bind17": "67:btn_screenshot",
+        "bind18": "79:btn_dpad1_right",
+        "bind19": "80:btn_dpad1_left",
+        "bind20": "81:btn_dpad1_down",
+        "bind21": "82:btn_dpad1_up"
+    }
+
+    # Set each binding in the config
+    for bind, val in keyboardBindings.items():
+        Config.set("digital", bind, val)
+
+    # Add the additional keyboard info to the emulator section
+    Config.set("emulator", "dead_zone", "10")
+    Config.set("emulator", "mapping_name", "Keyboard")
+    Config.set("emulator", "rumble_power", "100")
+    Config.set("emulator", "saturation", "100")
+    Config.set("emulator", "version", "3")
+
+    with configFileName.open('w+') as cfgfile:
+        Config.write(cfgfile)

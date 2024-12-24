@@ -141,8 +141,11 @@ ifeq ($(BR2_PACKAGE_XSERVER_XORG_SERVER),)
 	endif
 endif
 
+# disable libdecor : A client-side decorations library for Wayland client
+# it makes retroarch unable to start on dual screen. It looks like a ra bug
 ifeq ($(BR2_PACKAGE_WAYLAND)$(BR2_PACKAGE_SWAY),yy)
     RETROARCH_CONF_OPTS += --enable-wayland
+    RETROARCH_CONF_OPTS += --disable-libdecor
 else
     RETROARCH_CONF_OPTS += --disable-wayland
 endif
@@ -152,9 +155,9 @@ ifeq ($(BR2_PACKAGE_VULKAN_LOADER)$(BR2_PACKAGE_VULKAN_HEADERS),yy)
     RETROARCH_DEPENDENCIES += vulkan-headers vulkan-loader slang-shaders
 endif
 
-#ifeq ($(BR2_PACKAGE_HAS_LIBMALI),y)
-#	RETROARCH_CONF_OPTS += --enable-mali_fbdev
-#endif
+ifeq ($(BR2_PACKAGE_HAS_LIBMALI),y)
+	RETROARCH_CONF_OPTS += --enable-mali_fbdev
+endif
 
 ifeq ($(BR2_PACKAGE_BATOCERA_TARGET_ATM7039),y)
 	RETROARCH_CONF_OPTS += --disable-v4l2

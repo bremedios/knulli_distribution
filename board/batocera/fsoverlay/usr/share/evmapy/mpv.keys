@@ -1,0 +1,80 @@
+{
+    "actions_player1": [
+        {
+            "trigger": "up",
+            "type": "key",
+            "target": "KEY_UP"
+        },
+        {
+            "trigger": "down",
+            "type": "key",
+            "target": "KEY_DOWN"
+        },
+        {
+            "trigger": "left",
+            "type": "key",
+            "target": "KEY_LEFT"
+        },
+        {
+            "trigger": "right",
+            "type": "key",
+            "target": "KEY_RIGHT"
+        },
+        {
+            "trigger": "select",
+            "type": "key",
+            "target": "KEY_ESC"
+        },
+        {
+            "trigger": "a",
+            "type": "key",
+            "target": "KEY_SPACE"
+        },
+        {
+            "trigger": [
+                "hotkey",
+                "start"
+            ],
+            "type": "key",
+            "target": "KEY_Q"
+        },
+        {
+            "trigger": "b",
+            "type": "key",
+            "target": "KEY_O"
+        },
+        {
+            "trigger": "joystick1",
+            "type": "mouse"
+        },
+        {
+            "trigger": "joystick2",
+            "type": "mouse"
+        },
+        {
+            "trigger": "pagedown",
+            "type": "key",
+            "target": "KEY_PAGEUP"
+        },
+        {
+            "trigger": "pageup",
+            "type": "key",
+            "target": "KEY_PAGEDOWN"
+        },
+        {
+            "trigger": "l1",
+            "type": "key",
+            "target": ["KEY_LEFTSHIFT", "KEY_PAGEUP"]
+        },
+        {
+            "trigger": "l2",
+            "type": "key",
+            "target": ["KEY_LEFTSHIFT", "KEY_PAGEDOWN"]
+        },
+        {
+            "trigger": "x",
+            "type": "key",
+            "target": "KEY_J"
+        }
+    ]
+}

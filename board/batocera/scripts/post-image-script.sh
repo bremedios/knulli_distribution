@@ -41,7 +41,9 @@ fi
 mkdir -p "${BATOCERA_BINARIES_DIR}/images" || exit 1
 
 ##### build images #############
-SUFFIXVERSION=$(cat "${TARGET_DIR}/usr/share/batocera/batocera.version" | sed -e s+'^\([0-9\.]*\).*$'+'\1'+) # xx.yy version
+#SUFFIXVERSION=$(cat "${TARGET_DIR}/usr/share/batocera/batocera.version" | sed -e s+'^\([0-9\.]*\).*$'+'\1'+) # xx.yy version
+SUFFIXVERSION=$(awk '{if ($1 ~ /^[0-9\.]+$/) print $1; else print $1}' "${TARGET_DIR}/usr/share/batocera/batocera.version") # Handle numeric and codename strings versions
+
 SUFFIXDATE=$(date +%Y%m%d)
 
 #### build the images ###########
@@ -59,11 +61,11 @@ do
     cp     "${BINARIES_DIR}/batocera-boot.conf" "${BATOCERA_BINARIES_DIR}/boot/" || exit 1
     echo   "${BATOCERA_SUBTARGET}" > "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.board" || exit 1
 
-    #### boot.tar.xz ###############
-    echo "creating images/${BATOCERA_SUBTARGET}/boot.tar.xz"
+    #### boot.tar.gz ###############
+    echo "creating images/${BATOCERA_SUBTARGET}/boot.tar.gxz"
     mkdir -p "${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}" || exit 1
-    (cd "${BATOCERA_BINARIES_DIR}/boot" && tar -I "xz -T0" -cf "${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/knulli-${BATOCERA_LOWER_TARGET}-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}_boot.tar.xz" *) || exit 1
-    
+    (cd "${BATOCERA_BINARIES_DIR}/boot" && tar -cf - * | pigz -9 > "${BATOCERA_BINARIES_DIR}/images/${BATOCERA_SUBTARGET}/knulli-${BATOCERA_LOWER_TARGET}-${BATOCERA_SUBTARGET}-${SUFFIXVERSION}-${SUFFIXDATE}_boot.tar.gz") || exit 1
+
     # rename the squashfs : the .update is the version that will be renamed at boot to replace the old version
     mv "${BATOCERA_BINARIES_DIR}/boot/boot/batocera.update" "${BATOCERA_BINARIES_DIR}/boot/boot/batocera" || exit 1
 
@@ -98,7 +100,7 @@ do
     rm -f "${BATOCERA_BINARIES_DIR}/boot.vfat" || exit 1
     rm -f "${BATOCERA_BINARIES_DIR}/userdata.ext4" || exit 1
     mv "${BATOCERA_BINARIES_DIR}/batocera.img" "${BATOCERAIMG}" || exit 1
-    gzip "${BATOCERAIMG}" || exit 1
+    pigz "${BATOCERAIMG}" || exit 1
 
     # rename the boot to boot_arch
     mv "${BATOCERA_BINARIES_DIR}/boot" "${BOOTNAMEDDIR}" || exit 1
@@ -108,7 +110,7 @@ do
 done
 
 #### md5 and sha256 #######################
-for FILE in "${BATOCERA_BINARIES_DIR}/images/"*"/knulli-"*"_boot.tar.xz" "${BATOCERA_BINARIES_DIR}/images/"*"/knulli-"*".img.gz"
+for FILE in "${BATOCERA_BINARIES_DIR}/images/"*"/knulli-"*"_boot.tar.gz" "${BATOCERA_BINARIES_DIR}/images/"*"/knulli-"*".img.gz"
 do
     echo "creating ${FILE}.md5"
     CKS=$(md5sum "${FILE}" | sed -e s+'^\([^ ]*\) .*$'+'\1'+)

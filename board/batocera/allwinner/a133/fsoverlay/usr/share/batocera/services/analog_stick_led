@@ -1,11 +1,5 @@
 #!/bin/bash
 
-BOARD=$(cat /boot/boot/batocera.board)
-# We only want the script to run for these devices
-if [ "$BOARD" != "rg40xx-h" ] && [ "$BOARD" != "rg40xx-v" ] && [ "$BOARD" != "rg-cubexx" ]; then
-    exit 1
-fi
-
 case "$1" in
   start)
   # Code in here will only be executed on start.

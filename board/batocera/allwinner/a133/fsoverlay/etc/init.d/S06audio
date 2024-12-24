@@ -18,7 +18,7 @@ start_pipewire() {
     do
         sleep 0.1
         N=$((N+1))
-        test $N -gt 50 && { msg=KO; break; }
+        test $N -gt 5 && { msg=KO; break; }
     done
 
     echo "$msg"
@@ -33,11 +33,7 @@ stop_pipewire() {
 
 case "$1" in
     start)
-        alsactl init # init cards with alsa files
-	start_pipewire
-	amixer sset HpSpeaker on
-	amixer sset LINEOUT on
-	amixer set 'Headphone' 4
+        start_pipewire
     ;;
     stop)
         stop_pipewire

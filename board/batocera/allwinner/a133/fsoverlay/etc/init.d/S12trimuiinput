@@ -1,10 +1,10 @@
 #!/bin/sh
 
-RESOLUTION=$(batocera-resolution currentResolution)
+BOARD=$(cat /boot/boot/batocera.board)
 
 case $1 in
     start)
-	if [ "$RESOLUTION" == "1280x720" ]; then 
+	if [ "$BOARD" = "trimui-smart-pro" ]; then 
 		trimui_inputd_smart_pro &
 	else
 		trimui_inputd_brick &

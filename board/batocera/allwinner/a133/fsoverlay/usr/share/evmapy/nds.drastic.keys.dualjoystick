@@ -96,14 +96,14 @@
             "type": "key",
             "target": [ "KEY_V" ],
             "description": "Button R"
-    },    
+    },
     {
             "trigger": ["l2"],
             "type": "key",
-            "target": [ "KEY_Y" ],
-            "description": "Microphone"
+            "target": [ "KEY_F3" ],
+            "description": "Disposition A"
     },
-	{
+    {
             "trigger": ["r2"],
             "type": "key",
             "target": [ "BTN_LEFT" ],
@@ -131,35 +131,35 @@
             "target": [ "KEY_F7" ],
             "description": "Load State"
     },
-	{
+    {
+            "trigger": ["hotkey", "b"],
+            "type": "key",
+            "target": [ "KEY_F1" ],
+            "description": "QuickMenu"
+    },
+    {
+            "trigger": ["hotkey", "down"],
+            "type": "key",
+            "target": [ "KEY_F2" ],
+            "description": "Swap Screens"
+    },
+    {
             "trigger": ["hotkey", "right"],
             "type": "key",
             "target": [ "KEY_TAB" ],
             "description": "FastForward"
     },
     {
-            "trigger": ["hotkey", "left"],
-            "type": "key",
-            "target": [ "KEY_F2" ],
-            "description": "Swap Screens"
-    },
-	{
-            "trigger": ["hotkey", "up"],
-            "type": "key",
-            "target": [ "KEY_F3" ],
-            "description": "Disposition A"
-    },
-    {
-            "trigger": ["hotkey", "down"],
+            "trigger": ["hotkey", "l2"],
             "type": "key",
             "target": [ "KEY_F4" ],
             "description": "Disposition B"
     },
     {
-            "trigger": ["hotkey", "b"],
+            "trigger": ["hotkey", "r2"],
             "type": "key",
-            "target": [ "KEY_F1" ],
-            "description": "QuickMenu"
+            "target": [ "KEY_Y" ],
+            "description": "Microphone"
     }
     ]
 }

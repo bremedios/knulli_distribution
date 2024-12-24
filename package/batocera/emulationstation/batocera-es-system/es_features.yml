@@ -93,6 +93,13 @@ shared:
       choices:
         "On": 1
         "Off": 0
+    integeroverscale:
+      prompt:  INTEGER OVERSCALE
+      description: Forces integer scaling to round up instead of down.
+      submenu: GAME RENDERING & SHADERS
+      choices:
+        "On": 1
+        "Off": 0        
     bezel:
       prompt: DECORATION SET
       submenu: DECORATIONS
@@ -526,10 +533,10 @@ shared:
         "l3": "l3"
         "r3": "r3"
 global:
-  shared: [powermode, batterymode, tdp, videomode, ratio, shaderset, smooth, integerscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, rewind, toggle_fast_forward, runahead, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain]
+  shared: [powermode, batterymode, tdp, videomode, ratio, shaderset, smooth, integerscale, integeroverscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, rewind, toggle_fast_forward, runahead, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain]
 
 libretro:
-  shared: [powermode, tdp, videomode, ratio, shaderset, smooth, integerscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, toggle_fast_forward, runahead, preemptiveframes, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain, audio_volume, hotkey_up, hotkey_down, hotkey_left, hotkey_right, hotkey_y, hotkey_x, hotkey_b, hotkey_a, hotkey_l1, hotkey_r1, hotkey_l2, hotkey_r2]
+  shared: [powermode, tdp, videomode, ratio, shaderset, smooth, integerscale, integeroverscale, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo, ai_service_enabled, ai_target_lang, ai_service_url, ai_service_pause, toggle_fast_forward, runahead, preemptiveframes, secondinstance, video_frame_delay_auto, vrr_runloop_enable, video_threaded, rumble_gain, audio_volume, hotkey_up, hotkey_down, hotkey_left, hotkey_right, hotkey_y, hotkey_x, hotkey_b, hotkey_a, hotkey_l1, hotkey_r1, hotkey_l2, hotkey_r2]
   cfeatures:
     gfxbackend:
       archs_include: [x86, x86_64, bcm2711, bcm2712, a3gen2]
@@ -11405,6 +11412,45 @@ xemu:
 lexaloffle:
   features: [padtokeyboard]
   shared: [powermode, tdp, videomode, bezel, bezel_stretch, hud, hud_corner, bezel.tattoo, bezel.tattoo_corner, bezel.tattoo_file, bezel.resize_tattoo]
+  systems:
+    pico8:
+        cfeatures:
+            pico8_showfps:
+                group: ADVANCED OPTIONS
+                prompt: SHOW FPS
+                description: Show current FPS during gameplay.
+                choices:
+                    "Off":  0
+                    "On":   1
+            pico8_pixelperfect:
+                group: ADVANCED OPTIONS
+                prompt: PIXEL PERFECT
+                description: Enables integer scaling for pixel-perfect image quality.
+                choices:
+                    "Off":  0
+                    "On":   1                    
+            pico8_splorefilter:
+                group: ADVANCED OPTIONS
+                prompt: SPLORE FILTER
+                description: Filters out games tagged mature in splore.
+                choices:
+                    "Off":  0
+                    "On":   1
+            pico8_framesleep:
+                group: ADVANCED OPTIONS
+                prompt: FRAME SLEEP DURATION
+                description: Set the number of milliseconds to wait each frame to reduce power usage.
+                choices:
+                    "1 (Default)":  1
+                    "2":            2
+                    "3":            3
+                    "4":            4
+                    "5":            5
+                    "6":            6
+                    "7":            7
+                    "8":            8
+                    "9":            9
+                    "10":           10
 
 ecwolf:
   features: [padtokeyboard]

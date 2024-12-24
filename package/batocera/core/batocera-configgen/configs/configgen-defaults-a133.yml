@@ -27,3 +27,6 @@ dreamcast:
 naomi:
   emulator: libretro
   core:     flycastvl
+cdi:
+  emulator: libretro
+  core:     same_cdi

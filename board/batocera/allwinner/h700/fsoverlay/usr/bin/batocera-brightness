@@ -26,6 +26,20 @@ cycle() {
     exit 0
 }
 
+display_off() {
+    echo disable > /sys/kernel/debug/dispdbg/command
+    echo lcd0 > /sys/kernel/debug/dispdbg/name
+    echo 1 > /sys/kernel/debug/dispdbg/start
+    exit 0
+}
+
+display_on() {
+    echo enable > /sys/kernel/debug/dispdbg/command
+    echo lcd0 > /sys/kernel/debug/dispdbg/name
+    echo 1 > /sys/kernel/debug/dispdbg/start
+    exit 0
+}
+
 # get
 if test $# = 0
 then
@@ -39,7 +53,11 @@ fi
 if test $# = 1
 then
     if [ "${1}" = "cycle" ]; then
-       cycle
+        cycle
+    elif [ "${1}" = "dispoff" ]; then
+        display_off
+    elif [ "${1}" = "dispon" ]; then
+        display_on
     else
        NEWVAL=$(expr "${1}" "*" "${XMAX}" / 100)
        setValue "${NEWVAL}" "${XMAX}"

@@ -86,6 +86,7 @@ fi
 # the user can delete the directory, it will recreate the structure
 # the user can delete files, files will not be recreated
 for FILE in music bios extractions kodi library saves screenshots recordings splash \
+            roms/mpv \
             system/.config/lirc/lircd.conf \
             system/configs/emulationstation/es_settings.cfg \
             system/configs/emulationstation/about.info \
