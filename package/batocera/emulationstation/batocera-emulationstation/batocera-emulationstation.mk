@@ -4,8 +4,8 @@
 #
 ################################################################################
 # Last update: Commits on Oct 18, 2024
-BATOCERA_EMULATIONSTATION_VERSION = knulli
-BATOCERA_EMULATIONSTATION_SITE = https://github.com/knulli-cfw/batocera-emulationstation
+BATOCERA_EMULATIONSTATION_VERSION = bug/fontglyphartifact
+BATOCERA_EMULATIONSTATION_SITE = https://github.com/bremedios/knulli_distribution.git
 BATOCERA_EMULATIONSTATION_SITE_METHOD = git
 BATOCERA_EMULATIONSTATION_LICENSE = MIT
 BATOCERA_EMULATIONSTATION_GIT_SUBMODULES = YES
