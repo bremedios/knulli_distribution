@@ -5,7 +5,7 @@ if [ "$BOARD" != "rg35xx-sp" ]; then
     exit 1
 fi
 
-LOCK_FILE="/var/run/lid-suspend-script.lock"
+LOCK_FILE="/var/run/lid-control.lock"
 
 exec 200>"${LOCK_FILE}"
 if ! flock -n 200; then

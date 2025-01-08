@@ -21,7 +21,8 @@ trap 'cleanup' SIGTERM
 STATE="active"
 STATE_FLAG="/var/run/activity_state.flag"
 BRIGHTNESS="$(batocera-brightness)"
-GOVERNOR="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
+GOVERNOR=""
+SAVED_GOVERNOR=""
 
 # Called with SIGTERM
 cleanup() {
@@ -132,9 +133,12 @@ do_inactivity() {
 
             if [ "$AGGRESSIVE" == "1" ]; then
                 GOVERNOR="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
-                for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-                    echo "powersave" > "$cpu"
-                done
+                if [ "$GOVERNOR" != "powersave" ]; then
+                    SAVED_GOVERNOR="$GOVERNOR"
+                    for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+                        echo "powersave" > "$cpu"
+                    done
+                fi
             fi
         ;;
         dispoff)
@@ -156,7 +160,6 @@ do_inactivity() {
 }
 
 do_extended_inactivity() {
-    STATE=""
     case "$EXTENDED_MODE" in
         suspend)
             pm-is-supported --suspend && pm-suspend
@@ -174,25 +177,26 @@ do_extended_inactivity() {
 do_activity() {
     STATE="active"
     echo "1" > "$STATE_FLAG"
-    if [ "$MODE" = "dim" ]; then
-        if [ "$AGGRESSIVE" == "1" ] && [ -n "$GOVERNOR" ]; then
-            for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
-                echo "$GOVERNOR" > "$cpu"
-            done
-        fi
+    case "$MODE" in
+        dim)
+            if [ "$AGGRESSIVE" == "1" ] && [ -n "$SAVED_GOVERNOR" ]; then
+                for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
+                    echo "$SAVED_GOVERNOR" > "$cpu"
+                done
+            fi
 
-        batocera-audio setSystemVolume unmute
+            batocera-audio setSystemVolume unmute
 
-        local CUR_BRIGHTNESS="$(batocera-brightness)"
-        if [ "$CUR_BRIGHTNESS" != "$BRIGHTNESS" ]; then
-            animate_brightness "$CUR_BRIGHTNESS" "$BRIGHTNESS"
-        fi
-    fi
-
-    if [ "$MODE" = "dispoff" ]; then
-        batocera-brightness dispon
-        batocera-audio setSystemVolume unmute
-    fi
+            local CUR_BRIGHTNESS="$(batocera-brightness)"
+            if [ "$CUR_BRIGHTNESS" != "$BRIGHTNESS" ]; then
+                animate_brightness "$CUR_BRIGHTNESS" "$BRIGHTNESS"
+            fi
+        ;;
+        dispoff)
+            batocera-brightness dispon
+            batocera-audio setSystemVolume unmute
+        ;;
+    esac
 }
 
 monitor_controllers() {
